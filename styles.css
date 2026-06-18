@@ -137,10 +137,28 @@ img { max-width: 100%; display: block; }
     max-width: var(--container);
     margin: 0 auto;
     display: grid;
-    grid-template-columns: 1.6fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: clamp(2rem, 6vw, 5rem);
-    align-items: end;
-    padding-bottom: clamp(3rem, 6vw, 5rem);
+    align-items: center;
+    padding-bottom: clamp(2rem, 5vw, 4rem);
+}
+
+.hero-visual {
+    position: relative;
+    width: 100%;
+}
+
+.hero-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    filter: drop-shadow(0 30px 60px rgba(223, 255, 0, 0.08));
+}
+
+.hero-stats-row {
+    max-width: var(--container);
+    margin: 0 auto;
+    padding-bottom: clamp(3rem, 5vw, 4rem);
 }
 
 .eyebrow {
@@ -213,7 +231,7 @@ h1 {
 
 .hero-stats {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(4, 1fr);
     gap: 0;
     border: 1px solid var(--c-border);
 }
@@ -625,6 +643,7 @@ h4 {
     }
 
     .hero-grid { grid-template-columns: 1fr; }
+    .hero-stats { grid-template-columns: repeat(2, 1fr); }
     .feature-grid { grid-template-columns: repeat(2, 1fr); }
     .values-grid { grid-template-columns: repeat(2, 1fr); }
     .design-grid { grid-template-columns: 1fr; }
