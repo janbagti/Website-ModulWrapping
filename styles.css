@@ -571,42 +571,18 @@ h4 {
     margin-bottom: 1.5rem;
 }
 
-.contact-form {
-    display: grid;
-    gap: 1.25rem;
-}
-
-.contact-form label {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-.contact-form label span {
-    font-family: var(--f-display);
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: var(--c-muted);
-}
-
-.contact-form input,
-.contact-form textarea {
-    background: var(--c-surface);
-    color: var(--c-text);
+.contact-cta {
     border: 1px solid var(--c-border);
-    padding: 0.85rem 1rem;
-    font-family: var(--f-body);
-    font-size: 1rem;
-    width: 100%;
-}
-.contact-form input:focus,
-.contact-form textarea:focus {
-    outline: 2px solid var(--c-accent);
-    outline-offset: -1px;
-    border-color: var(--c-accent);
+    background: var(--c-bg-alt);
+    padding: clamp(2rem, 4vw, 3rem);
 }
 
-.contact-form button { justify-self: start; }
+.contact-cta-lead {
+    font-size: 1.1rem;
+    color: var(--c-text);
+    margin-bottom: 2rem;
+    max-width: 32em;
+}
 
 /* ====== Footer ====== */
 
