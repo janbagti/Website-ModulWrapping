@@ -4,9 +4,9 @@
    ============================================================ */
 
 :root {
-    --c-bg:        #0a0a0a;
-    --c-bg-alt:    #111111;
-    --c-surface:   #161616;
+    --c-bg:        #000000;
+    --c-bg-alt:    #0a0a0a;
+    --c-surface:   #121212;
     --c-border:    #1f1f1f;
     --c-text:      #f4f4f4;
     --c-muted:     #8a8a8a;
@@ -131,34 +131,54 @@ img { max-width: 100%; display: block; }
     padding: clamp(3rem, 8vw, 7rem) var(--gutter) 0;
     border-bottom: 1px solid var(--c-border);
     position: relative;
+    background: #000000;
+    overflow: hidden;
 }
 
 .hero-grid {
     max-width: var(--container);
     margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: clamp(2rem, 6vw, 5rem);
-    align-items: center;
+    position: relative;
     padding-bottom: clamp(2rem, 5vw, 4rem);
+    min-height: clamp(420px, 60vh, 720px);
+    display: flex;
+    align-items: center;
+}
+
+.hero-text {
+    position: relative;
+    z-index: 2;
+    max-width: 38rem;
 }
 
 .hero-visual {
-    position: relative;
-    width: 100%;
+    position: absolute;
+    top: 50%;
+    right: -8%;
+    width: 85%;
+    transform: translateY(-50%) scale(1.2);
+    transform-origin: center right;
+    z-index: 1;
+    pointer-events: none;
 }
 
 .hero-image {
     width: 100%;
     height: auto;
     display: block;
-    filter: drop-shadow(0 30px 60px rgba(223, 255, 0, 0.08));
+    opacity: 0.85;
+}
+
+.hero-text .lead {
+    text-shadow: 0 2px 20px rgba(0,0,0,0.9);
 }
 
 .hero-stats-row {
     max-width: var(--container);
     margin: 0 auto;
     padding-bottom: clamp(3rem, 5vw, 4rem);
+    position: relative;
+    z-index: 2;
 }
 
 .eyebrow {
@@ -642,7 +662,18 @@ h4 {
         gap: 1rem;
     }
 
-    .hero-grid { grid-template-columns: 1fr; }
+    .hero-grid { min-height: auto; flex-direction: column; align-items: flex-start; }
+    .hero-text { max-width: 100%; }
+    .hero-visual {
+        position: relative;
+        top: auto;
+        right: auto;
+        width: 110%;
+        margin: 2rem 0 0 -5%;
+        transform: scale(1.1);
+        transform-origin: center;
+    }
+    .hero-image { opacity: 1; }
     .hero-stats { grid-template-columns: repeat(2, 1fr); }
     .feature-grid { grid-template-columns: repeat(2, 1fr); }
     .values-grid { grid-template-columns: repeat(2, 1fr); }
