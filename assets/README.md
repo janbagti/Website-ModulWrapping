@@ -6,7 +6,8 @@ Bilder & Videos für die Website werden hier abgelegt.
 
 | Dateiname        | Wo wird es verwendet?                                     |
 |------------------|-----------------------------------------------------------|
-| `hero-van.png`   | Hero-Sektion, rechts neben der Headline (Transporter mit gelben Modul-Linien) |
+| `logo.png`       | Header, links neben dem Schriftzug (Hirsch-Wappen in #DFFF00) |
+| `hero-van.png`   | Hero-Sektion, hinter der Headline (Transporter mit gelben Modul-Linien) |
 
 Bitte das Hero-Bild **unter genau diesem Dateinamen** speichern, damit es
 automatisch eingebunden wird. Bevorzugtes Format: PNG mit transparentem

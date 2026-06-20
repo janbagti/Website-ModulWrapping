@@ -84,8 +84,8 @@ img { max-width: 100%; display: block; }
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 56px;
-    height: 56px;
+    width: 52px;
+    height: 52px;
     flex-shrink: 0;
 }
 
@@ -93,11 +93,7 @@ img { max-width: 100%; display: block; }
     width: 100%;
     height: 100%;
     object-fit: contain;
-    /* Recolor any dark silhouette to brand accent #DFFF00 */
-    filter: brightness(0) saturate(100%)
-            invert(94%) sepia(40%) saturate(1846%)
-            hue-rotate(7deg) brightness(106%) contrast(106%);
-    mix-blend-mode: screen;
+    display: block;
 }
 
 .site-nav {
@@ -666,7 +662,7 @@ h4 {
 @media (max-width: 560px) {
     .logo-line-1 { font-size: 0.7rem; }
     .logo-line-2 { font-size: 0.55rem; }
-    .logo-bars .bar { width: 20px; height: 4px; }
+    .logo-mark { width: 40px; height: 40px; }
 
     .hero-stats { grid-template-columns: 1fr 1fr; }
     .feature-grid { grid-template-columns: 1fr; }
