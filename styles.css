@@ -80,19 +80,24 @@ img { max-width: 100%; display: block; }
     letter-spacing: 0.18em;
 }
 
-.logo-bars {
+.logo-mark {
     display: inline-flex;
-    flex-direction: column;
-    gap: 4px;
-    transform: rotate(-20deg);
-    transform-origin: center;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
 }
 
-.logo-bars .bar {
-    display: block;
-    width: 28px;
-    height: 5px;
-    background: var(--c-accent);
+.logo-mark-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* Recolor any dark silhouette to brand accent #DFFF00 */
+    filter: brightness(0) saturate(100%)
+            invert(94%) sepia(40%) saturate(1846%)
+            hue-rotate(7deg) brightness(106%) contrast(106%);
+    mix-blend-mode: screen;
 }
 
 .site-nav {
