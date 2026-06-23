@@ -290,66 +290,7 @@
             </div>
 
             <div class="contact-cta">
-                <form id="anfrage-form" class="anfrage-form" novalidate>
-                    <div class="form-row form-row-2">
-                        <label>
-                            <span>Vorname *</span>
-                            <input type="text" name="vorname" autocomplete="given-name" required>
-                        </label>
-                        <label>
-                            <span>Name *</span>
-                            <input type="text" name="name" autocomplete="family-name" required>
-                        </label>
-                    </div>
-
-                    <label>
-                        <span>Anschrift *</span>
-                        <input type="text" name="anschrift" autocomplete="street-address" placeholder="Straße, Hausnr., PLZ Ort" required>
-                    </label>
-
-                    <div class="form-row form-row-2">
-                        <label>
-                            <span>Telefonnummer *</span>
-                            <input type="tel" name="telefon" autocomplete="tel" required>
-                        </label>
-                        <label>
-                            <span>E-Mail-Adresse *</span>
-                            <input type="email" name="email" autocomplete="email" required>
-                        </label>
-                    </div>
-
-                    <label>
-                        <span>Beschreiben Sie Ihr Projekt / Vorhaben *</span>
-                        <textarea name="projekt" rows="6" required></textarea>
-                    </label>
-
-                    <label>
-                        <span>Wie dringend ist Ihr Projekt? *</span>
-                        <select name="dringlichkeit" required>
-                            <option value="" disabled selected>Bitte wählen …</option>
-                            <option value="zeitnah">zeitnah</option>
-                            <option value="in 3 Monaten">in 3 Monaten</option>
-                            <option value="in 6 Monaten">in 6 Monaten</option>
-                        </select>
-                    </label>
-
-                    <label class="antispam">
-                        <span>Antispam: Was ergibt 17 + 8? *</span>
-                        <input type="text" name="antispam" inputmode="numeric" pattern="[0-9]*"
-                               autocomplete="off" maxlength="4" required>
-                    </label>
-
-                    <p class="form-hint">Felder mit * sind Pflichtfelder.</p>
-
-                    <button type="submit" class="btn btn-primary">Anfrage senden</button>
-
-                    <div class="form-success" role="status" aria-live="polite" hidden>
-                        <p class="form-success-title">Vielen Dank!</p>
-                        <p>Ihre Anfrage wurde erfolgreich abgeschickt. Wir melden uns zeitnah bei Ihnen.</p>
-                    </div>
-
-                    <div class="form-error" role="alert" aria-live="assertive" hidden></div>
-                </form>
+                [ninja_form id=3]
             </div>
         </div>
     </section>
