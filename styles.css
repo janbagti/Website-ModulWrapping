@@ -575,124 +575,20 @@ h4 {
 .contact-cta {
     border: 1px solid var(--c-border);
     background: var(--c-bg-alt);
-    padding: clamp(2rem, 4vw, 3rem);
+    padding: clamp(1rem, 2vw, 1.5rem);
+    /* Akzentkante oben links für brutalistischen Look */
+    box-shadow: -6px -6px 0 var(--c-accent);
+    margin-left: 6px;
+    margin-top: 6px;
 }
 
-/* ============================================================
-   Ninja Forms — Anpassung an Brutalism-Dark-Theme
-   Greifen die Standard-Klassen des Plugins ab,
-   sodass [ninja_form id=3] direkt im Stil der Seite erscheint.
-   ============================================================ */
-
-.contact-cta .nf-form-cont,
-.contact-cta .nf-form-wrap {
-    color: var(--c-text);
-    font-family: var(--f-body);
-}
-
-.contact-cta .nf-form-title h3,
-.contact-cta .nf-form-title h2 {
-    font-family: var(--f-display);
-    color: var(--c-text);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 1.5rem;
-}
-
-.contact-cta .nf-field-container {
-    margin-bottom: 1.25rem;
-}
-
-.contact-cta .nf-field-label label,
-.contact-cta .nf-field-label .nf-label-span {
-    font-family: var(--f-display);
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: var(--c-muted);
-    margin-bottom: 0.5rem;
+.contact-iframe {
     display: block;
-    font-weight: normal;
-}
-
-.contact-cta .nf-field-element input[type="text"],
-.contact-cta .nf-field-element input[type="email"],
-.contact-cta .nf-field-element input[type="tel"],
-.contact-cta .nf-field-element input[type="number"],
-.contact-cta .nf-field-element input[type="url"],
-.contact-cta .nf-field-element textarea,
-.contact-cta .nf-field-element select {
-    background: var(--c-surface) !important;
-    color: var(--c-text) !important;
-    border: 1px solid var(--c-border) !important;
-    padding: 0.85rem 1rem !important;
-    font-family: var(--f-body) !important;
-    font-size: 1rem !important;
-    width: 100% !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-}
-
-.contact-cta .nf-field-element input:focus,
-.contact-cta .nf-field-element textarea:focus,
-.contact-cta .nf-field-element select:focus {
-    outline: 2px solid var(--c-accent) !important;
-    outline-offset: -1px !important;
-    border-color: var(--c-accent) !important;
-}
-
-.contact-cta .nf-field-element textarea {
-    min-height: 140px;
-    resize: vertical;
-}
-
-.contact-cta .nf-field-element input[type="button"],
-.contact-cta .nf-field-element input[type="submit"],
-.contact-cta .submit-wrap input,
-.contact-cta button.ninja-forms-field {
-    background: var(--c-accent) !important;
-    color: var(--c-bg) !important;
-    border: 2px solid var(--c-accent) !important;
-    padding: 1.1rem 2rem !important;
-    font-family: var(--f-display) !important;
-    font-size: 0.95rem !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.1em !important;
-    border-radius: 0 !important;
-    cursor: pointer;
-    box-shadow: 6px 6px 0 var(--c-text);
-    transition: transform .15s ease, box-shadow .15s ease;
-    width: auto !important;
-}
-
-.contact-cta .nf-field-element input[type="button"]:hover,
-.contact-cta .nf-field-element input[type="submit"]:hover,
-.contact-cta button.ninja-forms-field:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 8px 8px 0 var(--c-text);
-}
-
-.contact-cta .nf-error.field-wrap .nf-field-element:after {
-    background: transparent !important;
-    border-color: #ff4d4d !important;
-}
-
-.contact-cta .nf-error-msg,
-.contact-cta .ninja-forms-req-symbol {
-    color: var(--c-accent) !important;
-    font-size: 0.85rem;
-}
-
-.contact-cta .nf-response-msg {
-    color: var(--c-text);
-    background: var(--c-surface);
-    border-left: 3px solid var(--c-accent);
-    padding: 1rem 1.25rem;
-}
-
-.contact-cta .nf-checkbox-wrap input[type="checkbox"],
-.contact-cta .nf-radio-wrap input[type="radio"] {
-    accent-color: var(--c-accent);
+    width: 100%;
+    min-height: 620px;
+    border: 0;
+    background: var(--c-bg-alt);
+    color-scheme: dark;
 }
 
 /* ====== Footer ====== */
