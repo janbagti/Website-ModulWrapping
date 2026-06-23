@@ -575,20 +575,132 @@ h4 {
 .contact-cta {
     border: 1px solid var(--c-border);
     background: var(--c-bg-alt);
-    padding: clamp(1rem, 2vw, 1.5rem);
-    /* Akzentkante oben links für brutalistischen Look */
+    padding: clamp(1.5rem, 3vw, 2.5rem);
     box-shadow: -6px -6px 0 var(--c-accent);
     margin-left: 6px;
     margin-top: 6px;
 }
 
-.contact-iframe {
-    display: block;
+/* ============================================================
+   Anfrage-Formular
+   ============================================================ */
+
+.anfrage-form {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.anfrage-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.anfrage-form label > span {
+    font-family: var(--f-display);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--c-muted);
+}
+
+.anfrage-form input,
+.anfrage-form textarea,
+.anfrage-form select {
+    background: var(--c-surface);
+    color: var(--c-text);
+    border: 1px solid var(--c-border);
+    padding: 0.85rem 1rem;
+    font-family: var(--f-body);
+    font-size: 1rem;
     width: 100%;
-    min-height: 620px;
-    border: 0;
+    border-radius: 0;
+    transition: border-color .15s ease;
+}
+
+.anfrage-form input:focus,
+.anfrage-form textarea:focus,
+.anfrage-form select:focus {
+    outline: 2px solid var(--c-accent);
+    outline-offset: -1px;
+    border-color: var(--c-accent);
+}
+
+.anfrage-form textarea { resize: vertical; min-height: 140px; }
+
+.anfrage-form select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--c-accent) 50%),
+                      linear-gradient(135deg, var(--c-accent) 50%, transparent 50%);
+    background-position: calc(100% - 1.2rem) 50%,
+                         calc(100% - 0.85rem) 50%;
+    background-size: 6px 6px;
+    background-repeat: no-repeat;
+    padding-right: 2.5rem;
+}
+
+.anfrage-form select option {
     background: var(--c-bg-alt);
-    color-scheme: dark;
+    color: var(--c-text);
+}
+
+.form-row {
+    display: grid;
+    gap: 1.25rem;
+}
+.form-row-2 { grid-template-columns: 1fr 1fr; }
+
+.antispam {
+    border-left: 3px solid var(--c-accent);
+    padding-left: 1rem;
+    max-width: 22rem;
+}
+
+.form-hint {
+    font-size: 0.8rem;
+    color: var(--c-muted);
+    letter-spacing: 0.05em;
+}
+
+.anfrage-form button[type="submit"] {
+    justify-self: start;
+}
+
+.anfrage-form button[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: 4px 4px 0 var(--c-border);
+}
+.anfrage-form button[disabled]:hover {
+    transform: none;
+    box-shadow: 4px 4px 0 var(--c-border);
+}
+
+.form-success {
+    background: var(--c-accent);
+    color: var(--c-bg);
+    padding: 1.5rem 1.75rem;
+    border: 2px solid var(--c-accent);
+}
+.form-success-title {
+    font-family: var(--f-display);
+    font-size: 1.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.form-error {
+    background: var(--c-surface);
+    color: var(--c-text);
+    border-left: 3px solid #ff6464;
+    padding: 1rem 1.25rem;
+    font-size: 0.95rem;
+}
+
+@media (max-width: 560px) {
+    .form-row-2 { grid-template-columns: 1fr; }
 }
 
 /* ====== Footer ====== */
