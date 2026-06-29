@@ -1,14 +1,34 @@
 import * as THREE from 'three';
 import { distortionToColor } from './flatten/distortion.js';
+import { buildVertexColorsFromComponents, compute2DCentroid } from './components-vis.js';
+
+function computeVertexColorsFromFaceData(index, vertCount, perFace, valToColor) {
+  const accum = new Float32Array(vertCount);
+  const counts = new Uint32Array(vertCount);
+  for (let f = 0; f < perFace.length; f++) {
+    const a = index[f * 3], b = index[f * 3 + 1], c = index[f * 3 + 2];
+    accum[a] += perFace[f]; counts[a]++;
+    accum[b] += perFace[f]; counts[b]++;
+    accum[c] += perFace[f]; counts[c]++;
+  }
+  const out = new Float32Array(vertCount * 3);
+  const tmp = new THREE.Color();
+  for (let i = 0; i < vertCount; i++) {
+    const v = counts[i] > 0 ? accum[i] / counts[i] : 0;
+    valToColor(v, tmp);
+    out[i * 3] = tmp.r; out[i * 3 + 1] = tmp.g; out[i * 3 + 2] = tmp.b;
+  }
+  return out;
+}
 
 // Einfacher orthographischer Viewer für die 2D-Abwicklung.
 // Mausrad zoomt, Drag pannt.
 export class Viewer2D {
   constructor(canvas) {
     this.canvas = canvas;
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setClearColor(0x000000, 1);
+    this.renderer.setClearColor(0x111111, 1);
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1000, 1000);
@@ -18,6 +38,12 @@ export class Viewer2D {
     this.wireMesh = null;
     this.wireVisible = true;
     this.heatmapOn = false;
+    this.componentsOn = false;
+
+    // HTML-Layer für Bahnnummern. Liegt absolut über dem Canvas.
+    this.labelLayer = document.createElement('div');
+    this.labelLayer.className = 'label-layer';
+    this.canvas.parentElement.appendChild(this.labelLayer);
 
     this._panStart = null;
     this._initialFrame = null;
@@ -49,6 +75,7 @@ export class Viewer2D {
     this.camera.top = view.cy + halfH;
     this.camera.bottom = view.cy - halfH;
     this.camera.updateProjectionMatrix();
+    this._renderLabels();
   }
 
   clear() {
@@ -64,6 +91,133 @@ export class Viewer2D {
       this.wireMesh.material.dispose();
       this.wireMesh = null;
     }
+    this._labelData = null;
+    this._renderLabels();
+  }
+
+  setComponentLabels(uv, index, componentOf, components) {
+    this._labelData = components.map(comp => {
+      const c = compute2DCentroid(uv, index, componentOf, comp.number - 1);
+      return { number: comp.number, u: c.u, v: c.v };
+    });
+    this._renderLabels();
+  }
+
+  setComponentColors(uv, index, componentOf, count) {
+    this.componentsOn = true;
+    const fakeGeo = {
+      index: { array: index },
+      attributes: { position: { count: uv.length / 2 } },
+    };
+    this._componentColors = buildVertexColorsFromComponents(fakeGeo, componentOf, count, 0.7);
+    this._applyColors();
+  }
+
+  clearComponents() {
+    this.componentsOn = false;
+    this._componentColors = null;
+    this._labelData = null;
+    this._renderLabels();
+    this._applyColors();
+  }
+
+  _renderLabels() {
+    if (!this.labelLayer) return;
+    this.labelLayer.innerHTML = '';
+    if (!this._labelData) return;
+    const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
+    if (!this._view) return;
+    const halfH = this._view.height / 2;
+    const halfW = halfH * (w / h);
+    for (const lbl of this._labelData) {
+      // Welt -> NDC -> Pixel
+      const ndcX = (lbl.u - this._view.cx) / halfW;
+      const ndcY = (lbl.v - this._view.cy) / halfH;
+      const px = (ndcX + 1) * 0.5 * w;
+      const py = (1 - (ndcY + 1) * 0.5) * h;
+      if (px < 0 || px > w || py < 0 || py > h) continue;
+      const el = document.createElement('div');
+      el.className = 'label';
+      el.textContent = String(lbl.number);
+      el.style.left = px + 'px';
+      el.style.top = py + 'px';
+      this.labelLayer.appendChild(el);
+    }
+  }
+
+  toDataURL(scale = 2) {
+    const oldSize = new THREE.Vector2();
+    this.renderer.getSize(oldSize);
+    const oldRatio = this.renderer.getPixelRatio();
+    const w = Math.floor(oldSize.x * scale);
+    const h = Math.floor(oldSize.y * scale);
+    this.renderer.setPixelRatio(1);
+    this.renderer.setSize(w, h, false);
+    this._updateProjection();
+    this.renderer.render(this.scene, this.camera);
+    const url = this.renderer.domElement.toDataURL('image/png');
+    this.renderer.setPixelRatio(oldRatio);
+    this.renderer.setSize(oldSize.x, oldSize.y, false);
+    this._updateProjection();
+    return url;
+  }
+
+  // Rendert die Szene exakt auf das angegebene UV-Rechteck mit der angegebenen
+  // Auflösung. Wird für Raster-Export (mit Grafik) benutzt: das resultierende
+  // PNG kann 1:1 in die SVG-Bahnen-Datei eingebettet werden.
+  renderRaster(bounds, pixelsPerUnit = 4) {
+    const { minU, minV, maxU, maxV } = bounds;
+    const wWorld = maxU - minU;
+    const hWorld = maxV - minV;
+    const w = Math.max(1, Math.round(wWorld * pixelsPerUnit));
+    const h = Math.max(1, Math.round(hWorld * pixelsPerUnit));
+
+    // Save state
+    const oldSize = new THREE.Vector2();
+    this.renderer.getSize(oldSize);
+    const oldRatio = this.renderer.getPixelRatio();
+    const oldClear = this.renderer.getClearColor(new THREE.Color()).getHex();
+    const oldClearA = this.renderer.getClearAlpha();
+    const oldCam = {
+      left: this.camera.left, right: this.camera.right, top: this.camera.top, bottom: this.camera.bottom,
+    };
+    // Switch wireframe and labels off — they would burn into the raster.
+    const wireWas = this.wireMesh?.visible;
+    if (this.wireMesh) this.wireMesh.visible = false;
+    const labelsWere = this.labelLayer.style.display;
+    this.labelLayer.style.display = 'none';
+    // Heatmap off for clean print (the print is the graphic + cut lines).
+    const hmWas = this.heatmapOn;
+    const cmpWas = this.componentsOn;
+    this.heatmapOn = false;
+    this.componentsOn = false;
+    this._applyColors();
+
+    this.renderer.setPixelRatio(1);
+    this.renderer.setClearColor(0xffffff, 0);
+    this.renderer.setSize(w, h, false);
+    this.camera.left = minU;
+    this.camera.right = maxU;
+    this.camera.top = maxV;
+    this.camera.bottom = minV;
+    this.camera.updateProjectionMatrix();
+    this.renderer.render(this.scene, this.camera);
+    const url = this.renderer.domElement.toDataURL('image/png');
+
+    // Restore
+    this.renderer.setPixelRatio(oldRatio);
+    this.renderer.setSize(oldSize.x, oldSize.y, false);
+    this.renderer.setClearColor(oldClear, oldClearA);
+    this.camera.left = oldCam.left; this.camera.right = oldCam.right;
+    this.camera.top = oldCam.top; this.camera.bottom = oldCam.bottom;
+    this.camera.updateProjectionMatrix();
+    if (this.wireMesh) this.wireMesh.visible = wireWas;
+    this.labelLayer.style.display = labelsWere;
+    this.heatmapOn = hmWas;
+    this.componentsOn = cmpWas;
+    this._applyColors();
+
+    return url;
   }
 
   setUnfold(geometry, uv, distortion) {
@@ -87,38 +241,31 @@ export class Viewer2D {
     const flatGeo = new THREE.BufferGeometry();
     flatGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     flatGeo.setIndex(new THREE.BufferAttribute(new Uint32Array(index), 1));
-
-    // Vertex-Farben aus Distortion (immer berechnen, einfach unsichtbar wenn aus).
-    const colors = new Float32Array(vertCount * 3);
-    if (distortion) {
-      const perFace = distortion.perFace;
-      const accum = new Float32Array(vertCount);
-      const counts = new Uint32Array(vertCount);
-      for (let f = 0; f < perFace.length; f++) {
-        const a = index[f * 3], b = index[f * 3 + 1], c = index[f * 3 + 2];
-        accum[a] += perFace[f]; counts[a]++;
-        accum[b] += perFace[f]; counts[b]++;
-        accum[c] += perFace[f]; counts[c]++;
-      }
-      const tmp = new THREE.Color();
-      for (let i = 0; i < vertCount; i++) {
-        const v = counts[i] > 0 ? accum[i] / counts[i] : 0;
-        distortionToColor(v, tmp);
-        colors[i * 3] = tmp.r;
-        colors[i * 3 + 1] = tmp.g;
-        colors[i * 3 + 2] = tmp.b;
-      }
-    } else {
-      for (let i = 0; i < colors.length; i += 3) {
-        colors[i] = 0.85; colors[i + 1] = 0.85; colors[i + 2] = 0.85;
-      }
+    // Textur-UVs aus dem 3D-Original-Geometry übernehmen, falls vorhanden.
+    const srcUV = geometry.getAttribute('uv');
+    if (srcUV) {
+      flatGeo.setAttribute('uv', new THREE.Float32BufferAttribute(srcUV.array.slice(), 2));
     }
-    flatGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    // Distortion-Farben pro Vertex aus den Face-Werten gemittelt.
+    this._distortionColors = null;
+    if (distortion) {
+      this._distortionColors = computeVertexColorsFromFaceData(
+        index, vertCount, distortion.perFace,
+        (v, out) => distortionToColor(v, out),
+      );
+    }
+    this._componentColors = null;
+    this._currentIndex = index;
+    this._currentUV = uv;
+
+    flatGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(vertCount * 3), 3));
 
     const fillMat = new THREE.MeshBasicMaterial({
-      vertexColors: this.heatmapOn,
-      color: this.heatmapOn ? 0xffffff : 0xeeeeee,
+      vertexColors: false,
+      color: 0xeeeeee,
       side: THREE.DoubleSide,
+      map: this._texture || null,
     });
     this.mesh = new THREE.Mesh(flatGeo, fillMat);
     this.scene.add(this.mesh);
@@ -138,6 +285,35 @@ export class Viewer2D {
     this._view = { cx, cy, height: h };
     this._initialFrame = { ...this._view };
     this._updateProjection();
+    this._applyColors();
+  }
+
+  _applyColors() {
+    if (!this.mesh) return;
+    const colorAttr = this.mesh.geometry.getAttribute('color');
+    if (!colorAttr) return;
+    const arr = colorAttr.array;
+    let src = null;
+    if (this.heatmapOn && this._distortionColors) src = this._distortionColors;
+    else if (!this._texture && this.componentsOn && this._componentColors) src = this._componentColors;
+    if (src) {
+      arr.set(src);
+      colorAttr.needsUpdate = true;
+      this.mesh.material.vertexColors = true;
+      this.mesh.material.color.set(0xffffff);
+    } else {
+      this.mesh.material.vertexColors = false;
+      this.mesh.material.color.set(this._texture ? 0xffffff : 0xeeeeee);
+    }
+    this.mesh.material.needsUpdate = true;
+  }
+
+  setTexture(texture) {
+    this._texture = texture;
+    if (this.mesh) {
+      this.mesh.material.map = texture;
+      this._applyColors();
+    }
   }
 
   setWireframe(on) {
@@ -147,11 +323,7 @@ export class Viewer2D {
 
   setHeatmap(on) {
     this.heatmapOn = on;
-    if (this.mesh) {
-      this.mesh.material.vertexColors = on;
-      this.mesh.material.color.set(on ? 0xffffff : 0xeeeeee);
-      this.mesh.material.needsUpdate = true;
-    }
+    this._applyColors();
   }
 
   resetView() {

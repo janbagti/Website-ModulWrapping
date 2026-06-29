@@ -21,8 +21,16 @@
         <button id="btn-seam-clear" class="btn" disabled>Seams löschen</button>
         <button id="btn-apply-cut" class="btn" disabled>Schnitte anwenden</button>
         <span class="divider"></span>
+        <label class="btn">
+          <input type="file" id="graphic-input" accept="image/*" hidden />
+          Grafik laden
+        </label>
+        <button id="btn-graphic-project" class="btn" disabled>Aus Ansicht projizieren</button>
+        <button id="btn-graphic-clear" class="btn" disabled>Grafik entfernen</button>
+        <span class="divider"></span>
         <button id="btn-flatten" class="btn primary" disabled>Abwickeln (LSCM)</button>
         <button id="btn-export" class="btn" disabled>SVG-Export</button>
+        <button id="btn-overview" class="btn" disabled>Übersicht (PNG)</button>
         <button id="btn-reset-view" class="btn" disabled>Ansicht zurücksetzen</button>
       </div>
     </header>
@@ -67,7 +75,7 @@
       <h2>Abwicklung</h2>
       <dl class="stats">
         <dt>Status</dt><dd id="stat-flatten-status">—</dd>
-        <dt>Iterationen</dt><dd id="stat-iters">—</dd>
+        <dt>Bahnen</dt><dd id="stat-comps">—</dd>
         <dt>Ø Verzerrung</dt><dd id="stat-dist-avg">—</dd>
         <dt>Max Verzerrung</dt><dd id="stat-dist-max">—</dd>
       </dl>
@@ -75,6 +83,12 @@
       <h2>Anzeige</h2>
       <label class="row"><input type="checkbox" id="toggle-wire" checked /> Wireframe</label>
       <label class="row"><input type="checkbox" id="toggle-heatmap" /> Verzerrungs-Heatmap</label>
+
+      <h2>Grafik</h2>
+      <dl class="stats">
+        <dt>Status</dt><dd id="stat-graphic">—</dd>
+      </dl>
+      <label class="row"><input type="checkbox" id="toggle-raster" checked /> Im SVG einbetten</label>
 
       <div class="legend" id="legend" hidden>
         <div class="legend-bar"></div>

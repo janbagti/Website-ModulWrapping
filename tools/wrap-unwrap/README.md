@@ -23,15 +23,19 @@ Dev-Server läuft auf <http://localhost:5173>.
 
 ## Workflow
 
-1. OBJ/STL laden (Drag-and-Drop oder Button)
-2. Mesh sollte mindestens einen offenen Rand haben (Loch / Schnitt).
-   Geschlossene Meshes müssen vorher gesehnt werden (kommt später).
-3. "Abwickeln (LSCM)" klicken — Pin-Vertices werden automatisch auf
-   den größten Boundary-Loop gesetzt
-4. Verzerrungs-Heatmap einschalten, um zu sehen wo die Folie arbeiten muss
+1. **OBJ/STL laden** (Drag-and-Drop oder Button)
+2. **Seams malen** → auf Kanten klicken um eine durchgehende Schnitt-Linie zu zeichnen
+3. **Schnitte anwenden** → Mesh wird entlang der Seams getrennt, Bahnen entstehen
+4. **Grafik laden** (optional) → Bild auf den Scan projizieren aus aktueller Ansicht
+5. **Abwickeln (LSCM)** → pro zusammenhängender Komponente eine eigene Bahn,
+   nebeneinander angeordnet (Shelf-Packing, max. Breite 1500 mm)
+6. **Verzerrungs-Heatmap** zeigt wo die Folie arbeiten muss
    - Grün: ≤ 5 % Flächenfehler — Folie verarbeitet das problemlos
    - Gelb: 5–15 % — typisches Wrap-Material schafft das mit Wärme
    - Rot: ≥ 20 % — Bahn muss geteilt werden
+7. **SVG-Export** → Bahnen-Datei mit Schnittlinien, Nummern und Grafik als Raster
+8. **Übersicht (PNG)** → 3D-Ansicht mit farbigen Komponenten + Nummern, damit
+   beim Aufkleben klar ist welche Bahn wohin gehört
 
 ## Mathematische Grenze
 
@@ -42,7 +46,7 @@ können, dass die physische Folie die Restverzerrung wegarbeitet.
 
 ## Geplant
 
-- Seam-Painting auf dem Mesh, automatische Patch-Segmentierung
-- SVG-Export 1:1 mit Bahnnummern und Passmarken
-- Grafik-Overlay (Bild auf 3D-Surface projizieren, zur Abwicklung mitnehmen)
-- ARAP-Verfeinerung für Bahnen mit gemischter Anforderung an Winkel- und Flächentreue
+- Automatische Patch-Segmentierung (Cluster nach Krümmung)
+- PDF-Export mit Seitenumbruch bei großen Layouts
+- ARAP-Verfeinerung für gemischte Anforderung an Winkel- und Flächentreue
+- Grafik-Overlay mit präziser Position-/Rotation-/Skalierung-Steuerung über UI

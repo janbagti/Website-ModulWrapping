@@ -62,6 +62,10 @@ export function generateSVG({
   uv,            // Float32Array, 2 per vertex
   index,         // Uint32Array, 3 per face
   distortion,    // { perFace }  optional
+  components,    // optional: [{ number, bbox: {minU,minV,maxU,maxV}, faces }]
+  componentOf,   // optional: Int32Array(faceCount)
+  rasterDataURL, // optional: PNG dataURL der gerenderten 2D-Abwicklung
+  rasterBounds,  // optional: { minU, minV, maxU, maxV } der Raster-Bildausdehnung
   unit = 'mm',
   triangulation = false,
   heatmap = false,
@@ -92,6 +96,12 @@ export function generateSVG({
 
   out.push(`  <g id="layout" transform="translate(0,${(minV + maxV).toFixed(3)}) scale(1,-1)">`);
 
+  // Raster-Grafik einbetten (unter allem anderen).
+  if (rasterDataURL && rasterBounds) {
+    const rb = rasterBounds;
+    out.push(`    <image href="${rasterDataURL}" x="${rb.minU.toFixed(3)}" y="${rb.minV.toFixed(3)}" width="${(rb.maxU - rb.minU).toFixed(3)}" height="${(rb.maxV - rb.minV).toFixed(3)}" preserveAspectRatio="none"/>`);
+  }
+
   if (heatmap && distortion) {
     // Triangel als gefüllte Polygone in Distortion-Farben.
     out.push(`    <g id="heatmap" stroke="none">`);
@@ -116,14 +126,49 @@ export function generateSVG({
     out.push(`    </g>`);
   }
 
-  // Outer boundary loops as closed paths
-  const loops = extractBoundaryLoops2D(uv, index);
+  // Outer boundary loops as closed paths (per component, oder global wenn keine).
   out.push(`    <g id="boundary" stroke="black" stroke-width="0.4" fill="none">`);
-  for (const loop of loops) {
-    const d = loop.map((vi, i) => `${i === 0 ? 'M' : 'L'} ${uv[vi*2].toFixed(3)},${uv[vi*2+1].toFixed(3)}`).join(' ') + ' Z';
-    out.push(`      <path d="${d}"/>`);
+  if (components && componentOf) {
+    for (const comp of components) {
+      // Sub-index für diese Komponente.
+      const subIdx = [];
+      for (const f of comp.faces) {
+        subIdx.push(index[f * 3], index[f * 3 + 1], index[f * 3 + 2]);
+      }
+      const loops = extractBoundaryLoops2D(uv, new Uint32Array(subIdx));
+      for (const loop of loops) {
+        const d = loop.map((vi, i) => `${i === 0 ? 'M' : 'L'} ${uv[vi*2].toFixed(3)},${uv[vi*2+1].toFixed(3)}`).join(' ') + ' Z';
+        out.push(`      <path d="${d}"/>`);
+      }
+    }
+  } else {
+    const loops = extractBoundaryLoops2D(uv, index);
+    for (const loop of loops) {
+      const d = loop.map((vi, i) => `${i === 0 ? 'M' : 'L'} ${uv[vi*2].toFixed(3)},${uv[vi*2+1].toFixed(3)}`).join(' ') + ' Z';
+      out.push(`      <path d="${d}"/>`);
+    }
   }
   out.push(`    </g>`);
+
+  // Bahnnummern pro Komponente.
+  if (components) {
+    out.push(`    <g id="numbers">`);
+    for (const comp of components) {
+      const cx = (comp.bbox.minU + comp.bbox.maxU) / 2;
+      const cy = (comp.bbox.minV + comp.bbox.maxV) / 2;
+      const r = Math.min(
+        (comp.bbox.maxU - comp.bbox.minU),
+        (comp.bbox.maxV - comp.bbox.minV),
+      ) * 0.08;
+      const size = Math.max(Math.min(r * 1.8, 60), 8);
+      out.push(`      <circle cx="${cx.toFixed(3)}" cy="${cy.toFixed(3)}" r="${(size * 0.65).toFixed(3)}" fill="white" stroke="black" stroke-width="0.6"/>`);
+      // Achtung: durch outer flip(scale(1,-1)) müssen Texte hier nochmal gespiegelt werden.
+      out.push(`      <g transform="translate(${cx.toFixed(3)},${cy.toFixed(3)}) scale(1,-1)">`);
+      out.push(`        <text x="0" y="0" font-family="Archivo Black, Impact, sans-serif" font-weight="bold" font-size="${size.toFixed(3)}" text-anchor="middle" dominant-baseline="central" fill="black">${comp.number}</text>`);
+      out.push(`      </g>`);
+    }
+    out.push(`    </g>`);
+  }
 
   // Passmarken: kleine Kreuze in den 4 Ecken der Bounding-Box.
   out.push(`    <g id="regmarks" stroke="black" stroke-width="0.3" fill="none">`);
@@ -168,4 +213,13 @@ export function downloadSVG(svgText, filename = 'abwicklung.svg') {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function downloadPNG(dataURL, filename) {
+  const a = document.createElement('a');
+  a.href = dataURL;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
