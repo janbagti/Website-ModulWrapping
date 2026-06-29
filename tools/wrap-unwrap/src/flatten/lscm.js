@@ -32,11 +32,25 @@ export function flattenLSCM(geometry, info) {
   }
 
   const loop = info.boundaryLoops[0];
-  // Zwei Pin-Vertices: zwei Punkte auf dem äußeren Rand, möglichst weit
-  // auseinander. Das fixiert Translation, Rotation und Skalierung der
-  // Abwicklung. Die UV-Werte sind willkürlich (0,0) und (1,0).
-  const pinA = loop[0];
-  const pinB = loop[Math.floor(loop.length / 2)];
+  // Zwei Pin-Vertices auf dem größten Rand, möglichst weit auseinander.
+  // Fixiert Translation, Rotation und Skalierung. Den weitesten Abstand
+  // finden wir mit 2x Farthest-Point: start beliebig, finde am weitesten
+  // entfernten Punkt, dann von dort wieder den am weitesten entfernten.
+  // Das ist eine 2-Approximation, in der Praxis fast immer perfekt.
+  const farthestFrom = (idx) => {
+    const px = positions[idx * 3], py = positions[idx * 3 + 1], pz = positions[idx * 3 + 2];
+    let best = idx, bestD = -1;
+    for (const v of loop) {
+      const dx = positions[v * 3] - px;
+      const dy = positions[v * 3 + 1] - py;
+      const dz = positions[v * 3 + 2] - pz;
+      const d = dx * dx + dy * dy + dz * dz;
+      if (d > bestD) { bestD = d; best = v; }
+    }
+    return best;
+  };
+  const pinA = farthestFrom(loop[0]);
+  const pinB = farthestFrom(pinA);
   if (pinA === pinB) {
     return { ok: false, error: 'Boundary-Loop zu klein.' };
   }

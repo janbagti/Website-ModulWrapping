@@ -17,7 +17,12 @@
           <input type="file" id="file-input" accept=".obj,.stl" hidden />
           OBJ / STL laden
         </label>
+        <button id="btn-seam-mode" class="btn" disabled>Seams malen</button>
+        <button id="btn-seam-clear" class="btn" disabled>Seams löschen</button>
+        <button id="btn-apply-cut" class="btn" disabled>Schnitte anwenden</button>
+        <span class="divider"></span>
         <button id="btn-flatten" class="btn primary" disabled>Abwickeln (LSCM)</button>
+        <button id="btn-export" class="btn" disabled>SVG-Export</button>
         <button id="btn-reset-view" class="btn" disabled>Ansicht zurücksetzen</button>
       </div>
     </header>
@@ -49,7 +54,15 @@
         <dt>Faces</dt><dd id="stat-faces">—</dd>
         <dt>Größe (mm)</dt><dd id="stat-size">—</dd>
         <dt>Berandung</dt><dd id="stat-boundary">—</dd>
+        <dt>Seams</dt><dd id="stat-seams">0</dd>
       </dl>
+
+      <h2>Seam-Modus</h2>
+      <p class="hint" id="seam-hint">
+        Auf eine Kante klicken um sie zur Naht zu machen.
+        Mehrere Kanten zu einer Linie verbinden → erst dann entsteht
+        beim Anwenden ein echter Schnitt.
+      </p>
 
       <h2>Abwicklung</h2>
       <dl class="stats">

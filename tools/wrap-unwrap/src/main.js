@@ -6,6 +6,9 @@ import { loadSTL } from './loaders/stl.js';
 import { buildMeshInfo } from './mesh-info.js';
 import { flattenLSCM } from './flatten/lscm.js';
 import { computeDistortion } from './flatten/distortion.js';
+import { cutMeshAlongSeams } from './flatten/cut.js';
+import { SeamPicker } from './seam-picker.js';
+import { generateSVG, downloadSVG } from './export-svg.js';
 
 const els = {
   canvas3d:       document.getElementById('canvas-3d'),
@@ -13,7 +16,11 @@ const els = {
   fileInput:      document.getElementById('file-input'),
   dropHint:       document.getElementById('drop-hint'),
   placeholder2d:  document.getElementById('placeholder-2d'),
+  btnSeamMode:    document.getElementById('btn-seam-mode'),
+  btnSeamClear:   document.getElementById('btn-seam-clear'),
+  btnApplyCut:    document.getElementById('btn-apply-cut'),
   btnFlatten:     document.getElementById('btn-flatten'),
+  btnExport:      document.getElementById('btn-export'),
   btnResetView:   document.getElementById('btn-reset-view'),
   toggleWire:     document.getElementById('toggle-wire'),
   toggleHeatmap:  document.getElementById('toggle-heatmap'),
@@ -24,6 +31,7 @@ const els = {
   statFaces:      document.getElementById('stat-faces'),
   statSize:       document.getElementById('stat-size'),
   statBoundary:   document.getElementById('stat-boundary'),
+  statSeams:      document.getElementById('stat-seams'),
   statFlattenStatus: document.getElementById('stat-flatten-status'),
   statIters:      document.getElementById('stat-iters'),
   statDistAvg:    document.getElementById('stat-dist-avg'),
@@ -35,10 +43,23 @@ const state = {
   meshInfo: null,
   uv: null,
   distortion: null,
+  fileName: '',
 };
 
 const viewer3d = new Viewer3D(els.canvas3d);
 const viewer2d = new Viewer2D(els.canvas2d);
+
+const seamPicker = new SeamPicker({
+  canvas: els.canvas3d,
+  camera: viewer3d.camera,
+  controls: viewer3d.controls,
+  scene: viewer3d.scene,
+});
+seamPicker.onSeamsChanged = (seams) => {
+  els.statSeams.textContent = String(seams.size);
+  els.btnSeamClear.disabled = seams.size === 0;
+  els.btnApplyCut.disabled = seams.size === 0;
+};
 
 function toast(msg, kind = '') {
   els.toast.textContent = msg;
@@ -50,6 +71,30 @@ function toast(msg, kind = '') {
 
 function fmtInt(n) { return n.toLocaleString('de-DE'); }
 function fmtPct(x) { return (x * 100).toFixed(1) + ' %'; }
+
+function refreshMeshStats() {
+  const info = state.meshInfo;
+  els.statVerts.textContent = fmtInt(info.vertexCount);
+  els.statFaces.textContent = fmtInt(info.faceCount);
+  const s = info.boundingSize;
+  els.statSize.textContent = `${s.x.toFixed(0)} × ${s.y.toFixed(0)} × ${s.z.toFixed(0)}`;
+  els.statBoundary.textContent = info.boundaryLoops.length === 0
+    ? 'geschlossen'
+    : `${info.boundaryLoops.length} Loop(s)`;
+}
+
+function clearFlattenResults() {
+  state.uv = null;
+  state.distortion = null;
+  els.statFlattenStatus.textContent = '—';
+  els.statIters.textContent = '—';
+  els.statDistAvg.textContent = '—';
+  els.statDistMax.textContent = '—';
+  els.btnExport.disabled = true;
+  viewer2d.clear();
+  els.placeholder2d.classList.remove('hidden');
+  viewer3d.setDistortion(null, false);
+}
 
 async function handleFile(file) {
   const name = file.name.toLowerCase();
@@ -80,27 +125,21 @@ async function handleFile(file) {
 
   state.geometry = geometry;
   state.meshInfo = info;
-  state.uv = null;
-  state.distortion = null;
+  state.fileName = file.name;
 
   viewer3d.setGeometry(geometry, info);
-  viewer2d.clear();
+  seamPicker.bind(viewer3d.mesh, geometry);
+  els.statSeams.textContent = '0';
+  els.btnSeamClear.disabled = true;
+  els.btnApplyCut.disabled = true;
 
-  els.statVerts.textContent = fmtInt(info.vertexCount);
-  els.statFaces.textContent = fmtInt(info.faceCount);
-  const s = info.boundingSize;
-  els.statSize.textContent = `${s.x.toFixed(0)} × ${s.y.toFixed(0)} × ${s.z.toFixed(0)}`;
-  els.statBoundary.textContent = info.boundaryLoops.length === 0
-    ? 'geschlossen'
-    : `${info.boundaryLoops.length} Loop(s)`;
-  els.statFlattenStatus.textContent = '—';
-  els.statIters.textContent = '—';
-  els.statDistAvg.textContent = '—';
-  els.statDistMax.textContent = '—';
+  refreshMeshStats();
+  clearFlattenResults();
 
   els.dropHint.classList.add('hidden');
   els.btnFlatten.disabled = false;
   els.btnResetView.disabled = false;
+  els.btnSeamMode.disabled = false;
 
   toast(`Geladen: ${fmtInt(info.vertexCount)} Vertices, ${fmtInt(info.faceCount)} Faces`, 'success');
 }
@@ -109,8 +148,6 @@ async function handleFlatten() {
   if (!state.geometry || !state.meshInfo) return;
   els.statFlattenStatus.textContent = 'läuft …';
   els.btnFlatten.disabled = true;
-
-  // Yield so the UI can repaint before we hog the main thread.
   await new Promise(r => setTimeout(r, 16));
 
   try {
@@ -132,6 +169,7 @@ async function handleFlatten() {
     viewer2d.setUnfold(state.geometry, result.uv, state.distortion);
     viewer3d.setDistortion(state.distortion, els.toggleHeatmap.checked);
     els.placeholder2d.classList.add('hidden');
+    els.btnExport.disabled = false;
   } catch (e) {
     console.error(e);
     els.statFlattenStatus.textContent = 'Fehler';
@@ -139,6 +177,70 @@ async function handleFlatten() {
   } finally {
     els.btnFlatten.disabled = false;
   }
+}
+
+function setSeamMode(on) {
+  if (on) {
+    seamPicker.enable();
+    els.btnSeamMode.classList.add('active');
+    els.btnSeamMode.textContent = 'Seam-Modus aus';
+  } else {
+    seamPicker.disable();
+    els.btnSeamMode.classList.remove('active');
+    els.btnSeamMode.textContent = 'Seams malen';
+  }
+}
+
+function handleApplyCut() {
+  if (!state.geometry) return;
+  if (seamPicker.seams.size === 0) {
+    toast('Keine Seams markiert.', 'error');
+    return;
+  }
+
+  const positions = state.geometry.attributes.position.array;
+  const index = state.geometry.index.array;
+  const cut = cutMeshAlongSeams(positions, index, seamPicker.seams);
+
+  const added = cut.positions.length / 3 - positions.length / 3;
+
+  const newGeo = new THREE.BufferGeometry();
+  newGeo.setAttribute('position', new THREE.Float32BufferAttribute(cut.positions, 3));
+  newGeo.setIndex(new THREE.BufferAttribute(cut.index, 1));
+  newGeo.computeVertexNormals();
+
+  const info = buildMeshInfo(newGeo);
+  state.geometry = newGeo;
+  state.meshInfo = info;
+
+  viewer3d.setGeometry(newGeo, info);
+  seamPicker.bind(viewer3d.mesh, newGeo); // resets seams (they're now boundary)
+  els.statSeams.textContent = '0';
+  els.btnSeamClear.disabled = true;
+  els.btnApplyCut.disabled = true;
+
+  refreshMeshStats();
+  clearFlattenResults();
+
+  setSeamMode(false);
+  toast(`Geschnitten: ${fmtInt(added)} zusätzliche Vertices, ${fmtInt(info.boundaryLoops.length)} Boundary-Loop(s)`, 'success');
+}
+
+function handleExport() {
+  if (!state.uv) return;
+  const baseName = state.fileName.replace(/\.[^.]+$/, '') || 'abwicklung';
+  const svg = generateSVG({
+    uv: state.uv,
+    index: state.geometry.index.array,
+    distortion: state.distortion,
+    unit: 'mm',
+    triangulation: false,
+    heatmap: els.toggleHeatmap.checked,
+    margin: 10,
+    label: baseName,
+  });
+  downloadSVG(svg, `${baseName}-abwicklung.svg`);
+  toast('SVG exportiert.', 'success');
 }
 
 // ---- Events ----
@@ -151,7 +253,7 @@ els.fileInput.addEventListener('change', e => {
 ['dragover', 'dragenter'].forEach(ev => {
   els.pane3d.addEventListener(ev, e => {
     e.preventDefault();
-    els.dropHint.classList.add('dragover');
+    if (!seamPicker.active) els.dropHint.classList.add('dragover');
   });
 });
 ['dragleave', 'drop'].forEach(ev => {
@@ -171,6 +273,15 @@ els.btnResetView.addEventListener('click', () => {
   viewer2d.resetView();
 });
 
+els.btnSeamMode.addEventListener('click', () => {
+  setSeamMode(!seamPicker.active);
+});
+els.btnSeamClear.addEventListener('click', () => {
+  seamPicker.clearSeams();
+});
+els.btnApplyCut.addEventListener('click', handleApplyCut);
+els.btnExport.addEventListener('click', handleExport);
+
 els.toggleWire.addEventListener('change', e => {
   viewer3d.setWireframe(e.target.checked);
   viewer2d.setWireframe(e.target.checked);
@@ -182,7 +293,6 @@ els.toggleHeatmap.addEventListener('change', e => {
   els.legend.hidden = !on;
 });
 
-// Resize handling
 const ro = new ResizeObserver(() => { viewer3d.resize(); viewer2d.resize(); });
 ro.observe(els.canvas3d.parentElement);
 ro.observe(els.canvas2d.parentElement);
