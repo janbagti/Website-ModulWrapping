@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wrap-Unwrap — Jan Bastke FolienDesign</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <strong>ModulWrapping</strong> · Wrap-Unwrap
+        <span class="tag">Intern</span>
+      </div>
+      <div class="actions">
+        <label class="btn">
+          <input type="file" id="file-input" accept=".obj,.stl" hidden />
+          OBJ / STL laden
+        </label>
+        <button id="btn-flatten" class="btn primary" disabled>Abwickeln (LSCM)</button>
+        <button id="btn-reset-view" class="btn" disabled>Ansicht zurücksetzen</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="pane" id="pane-3d">
+        <div class="pane-label">3D-Scan</div>
+        <canvas id="canvas-3d"></canvas>
+        <div class="drop-hint" id="drop-hint">
+          <div>
+            <strong>OBJ oder STL hier ablegen</strong>
+            <p>oder oben „OBJ / STL laden" klicken</p>
+          </div>
+        </div>
+      </section>
+      <section class="pane" id="pane-2d">
+        <div class="pane-label">2D-Abwicklung</div>
+        <canvas id="canvas-2d"></canvas>
+        <div class="placeholder" id="placeholder-2d">
+          <div>Abwicklung erscheint hier nach „Abwickeln (LSCM)".</div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="sidebar" id="sidebar">
+      <h2>Mesh</h2>
+      <dl class="stats">
+        <dt>Vertices</dt><dd id="stat-verts">—</dd>
+        <dt>Faces</dt><dd id="stat-faces">—</dd>
+        <dt>Größe (mm)</dt><dd id="stat-size">—</dd>
+        <dt>Berandung</dt><dd id="stat-boundary">—</dd>
+      </dl>
+
+      <h2>Abwicklung</h2>
+      <dl class="stats">
+        <dt>Status</dt><dd id="stat-flatten-status">—</dd>
+        <dt>Iterationen</dt><dd id="stat-iters">—</dd>
+        <dt>Ø Verzerrung</dt><dd id="stat-dist-avg">—</dd>
+        <dt>Max Verzerrung</dt><dd id="stat-dist-max">—</dd>
+      </dl>
+
+      <h2>Anzeige</h2>
+      <label class="row"><input type="checkbox" id="toggle-wire" checked /> Wireframe</label>
+      <label class="row"><input type="checkbox" id="toggle-heatmap" /> Verzerrungs-Heatmap</label>
+
+      <div class="legend" id="legend" hidden>
+        <div class="legend-bar"></div>
+        <div class="legend-labels"><span>0 %</span><span>≥ 25 %</span></div>
+      </div>
+    </aside>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
