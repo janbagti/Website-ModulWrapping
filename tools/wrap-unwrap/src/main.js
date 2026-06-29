@@ -8,6 +8,7 @@ import { flattenAllComponents } from './flatten/multi.js';
 import { cutMeshAlongSeams } from './flatten/cut.js';
 import { SeamPicker } from './seam-picker.js';
 import { GraphicOverlay } from './graphic-overlay.js';
+import { decimateMesh } from './decimate.js';
 import { generateSVG, downloadSVG, downloadPNG } from './export-svg.js';
 
 const els = {
@@ -28,6 +29,8 @@ const els = {
   btnGraphicClear: document.getElementById('btn-graphic-clear'),
   statGraphic:    document.getElementById('stat-graphic'),
   toggleRaster:   document.getElementById('toggle-raster'),
+  decimateTarget: document.getElementById('decimate-target'),
+  btnDecimate:    document.getElementById('btn-decimate'),
   toggleWire:     document.getElementById('toggle-wire'),
   toggleHeatmap:  document.getElementById('toggle-heatmap'),
   legend:         document.getElementById('legend'),
@@ -174,6 +177,11 @@ async function handleFile(file) {
     els.btnFlatten.disabled = false;
     els.btnResetView.disabled = false;
     els.btnSeamMode.disabled = false;
+    els.btnDecimate.disabled = false;
+
+    // Vorschlag: 10 % der aktuellen Faces, aber zwischen 5 k und 50 k.
+    const suggest = Math.max(5000, Math.min(50000, Math.round(info.faceCount * 0.1 / 1000) * 1000));
+    els.decimateTarget.value = String(suggest);
 
     toast(`Geladen: ${fmtInt(info.vertexCount)} Vertices, ${fmtInt(info.faceCount)} Faces`, 'success');
   } catch (e) {
@@ -244,6 +252,65 @@ function setSeamMode(on) {
     seamPicker.disable();
     els.btnSeamMode.classList.remove('active');
     els.btnSeamMode.textContent = 'Seams malen';
+  }
+}
+
+async function handleDecimate() {
+  if (!state.geometry) return;
+  const target = parseInt(els.decimateTarget.value, 10);
+  if (!Number.isFinite(target) || target < 100) {
+    toast('Ziel-Faces muss eine Zahl ≥ 100 sein.', 'error');
+    return;
+  }
+  const currentFaces = state.meshInfo.faceCount;
+  if (target >= currentFaces) {
+    toast(`Mesh hat schon ${fmtInt(currentFaces)} Faces — nichts zu reduzieren.`, '');
+    return;
+  }
+
+  els.btnDecimate.disabled = true;
+  toast('Dezimiere …', '');
+  await new Promise(r => setTimeout(r, 16));
+
+  const t0 = performance.now();
+  try {
+    const res = await decimateMesh(state.geometry, target, { targetError: 0.05 });
+    const dt = performance.now() - t0;
+    console.log('[decimate]', dt.toFixed(0), 'ms');
+
+    const newGeo = res.geometry;
+    newGeo.computeVertexNormals();
+    const info = buildMeshInfo(newGeo);
+    state.geometry = newGeo;
+    state.meshInfo = info;
+
+    viewer3d.setGeometry(newGeo, info);
+    seamPicker.bind(viewer3d.mesh, newGeo);
+    // Bestehende Seams sind topologisch nicht mehr gültig nach Dezimierung.
+    els.statSeams.textContent = '0';
+    els.btnSeamClear.disabled = true;
+    els.btnApplyCut.disabled = true;
+
+    // Texturen-UVs sind nach Dezimierung auch ungültig — leise droppen.
+    if (graphic.image) {
+      els.statGraphic.textContent = `${graphic.image.naturalWidth}×${graphic.image.naturalHeight} (neu projizieren)`;
+      viewer3d.setTexture(null);
+      viewer2d.setTexture(null);
+    }
+
+    refreshMeshStats();
+    clearFlattenResults();
+
+    toast(
+      `Dezimiert: ${fmtInt(currentFaces)} → ${fmtInt(res.finalFaceCount)} Faces ` +
+      `(Fehler ${(res.error * 100).toFixed(3)}% der Diagonale, ${dt.toFixed(0)} ms)`,
+      'success',
+    );
+  } catch (e) {
+    console.error(e);
+    toast('Dezimierung fehlgeschlagen: ' + e.message, 'error');
+  } finally {
+    els.btnDecimate.disabled = false;
   }
 }
 
@@ -375,6 +442,7 @@ els.btnResetView.addEventListener('click', () => {
 els.btnSeamMode.addEventListener('click', () => setSeamMode(!seamPicker.active));
 els.btnSeamClear.addEventListener('click', () => seamPicker.clearSeams());
 els.btnApplyCut.addEventListener('click', handleApplyCut);
+els.btnDecimate.addEventListener('click', handleDecimate);
 els.btnExport.addEventListener('click', handleExport);
 els.btnOverview.addEventListener('click', handleOverviewExport);
 

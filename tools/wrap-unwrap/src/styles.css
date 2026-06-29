@@ -215,6 +215,27 @@ body {
   margin-bottom: 0.5rem;
 }
 
+.dec-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.dec-row input[type="number"] {
+  flex: 1;
+  min-width: 0;
+  background: var(--c-surface);
+  color: var(--c-text);
+  border: 1px solid var(--c-border);
+  padding: 0.45rem 0.6rem;
+  font-family: var(--f-body);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.dec-row input[type="number"]:focus {
+  outline: none;
+  border-color: var(--c-accent);
+}
+
 .legend { margin-top: 0.8rem; }
 .legend-bar {
   height: 8px;

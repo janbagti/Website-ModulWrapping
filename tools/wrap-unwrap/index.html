@@ -65,6 +65,13 @@
         <dt>Seams</dt><dd id="stat-seams">0</dd>
       </dl>
 
+      <h2>Dezimieren</h2>
+      <p class="hint">Ziel-Faces. Für Folien-Abwicklung sind 20–50 k meist mehr als genug. Sehr dichte Scans (&gt; 200 k) brauchen das hier, sonst kippt der Browser.</p>
+      <div class="dec-row">
+        <input type="number" id="decimate-target" min="500" step="500" value="30000" />
+        <button id="btn-decimate" class="btn" disabled>Dezimieren</button>
+      </div>
+
       <h2>Seam-Modus</h2>
       <p class="hint" id="seam-hint">
         Auf eine Kante klicken um sie zur Naht zu machen.

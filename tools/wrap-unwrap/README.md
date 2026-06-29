@@ -24,18 +24,22 @@ Dev-Server läuft auf <http://localhost:5173>.
 ## Workflow
 
 1. **OBJ/STL laden** (Drag-and-Drop oder Button)
-2. **Seams malen** → auf Kanten klicken um eine durchgehende Schnitt-Linie zu zeichnen
-3. **Schnitte anwenden** → Mesh wird entlang der Seams getrennt, Bahnen entstehen
+2. **Dezimieren** (optional, aber bei > 100 k Faces dringend empfohlen)
+   → Ziel-Faces in der Seitenleiste eingeben, Button drücken.
+   meshoptimizer macht QEC mit Topologie-Erhaltung in ~1 s pro 100 k Faces.
+3. **Seams malen** → auf Kanten klicken um eine durchgehende Schnitt-Linie zu zeichnen
+4. **Schnitte anwenden** → Mesh wird entlang der Seams getrennt, Bahnen entstehen
 4. **Grafik laden** (optional) → Bild auf den Scan projizieren aus aktueller Ansicht
-5. **Abwickeln (LSCM)** → pro zusammenhängender Komponente eine eigene Bahn,
+6. **Abwickeln (LSCM)** → pro zusammenhängender Komponente eine eigene Bahn,
    nebeneinander angeordnet (Shelf-Packing, max. Breite 1500 mm)
-6. **Verzerrungs-Heatmap** zeigt wo die Folie arbeiten muss
+7. **Verzerrungs-Heatmap** zeigt wo die Folie arbeiten muss
    - Grün: ≤ 5 % Flächenfehler — Folie verarbeitet das problemlos
    - Gelb: 5–15 % — typisches Wrap-Material schafft das mit Wärme
    - Rot: ≥ 20 % — Bahn muss geteilt werden
-7. **SVG-Export** → Bahnen-Datei mit Schnittlinien, Nummern und Grafik als Raster
-8. **Übersicht (PNG)** → 3D-Ansicht mit farbigen Komponenten + Nummern, damit
-   beim Aufkleben klar ist welche Bahn wohin gehört
+8. **Grafik laden** (optional) → Bild aus aktueller Kamera-Sicht projizieren
+9. **SVG-Export** → Bahnen-Datei mit Schnittlinien, Nummern und Grafik als Raster
+10. **Übersicht (PNG)** → 3D-Ansicht mit farbigen Komponenten + Nummern, damit
+    beim Aufkleben klar ist welche Bahn wohin gehört
 
 ## Mathematische Grenze
 
