@@ -9,12 +9,34 @@ export function loadSTL(buffer) {
 }
 
 function detectBinary(buffer) {
-  const view = new DataView(buffer);
-  // 80-byte header + 4-byte triangle count. Binär, wenn Größe passt.
   if (buffer.byteLength < 84) return false;
+
+  // 1) Trianglezähler aus dem Header lesen und plausibel prüfen.
+  const view = new DataView(buffer);
   const triCount = view.getUint32(80, true);
-  const expected = 84 + triCount * 50;
-  return buffer.byteLength === expected;
+  if (triCount > 0 && triCount < 50_000_000) {
+    const expected = 84 + triCount * 50;
+    // Permissiv: Größe muss mindestens die Daten enthalten und darf
+    // bis zu 1 KB Padding/Müll am Ende haben. Viele Writer hängen
+    // sowas an (NULL, CR/LF, Markierungen).
+    if (buffer.byteLength >= expected && buffer.byteLength <= expected + 1024) {
+      return true;
+    }
+    if (buffer.byteLength === expected) return true;
+  }
+
+  // 2) Fallback: ASCII-STL fängt mit "solid " an und enthält im
+  //    Header nur druckbare Zeichen. Binär hat dort fast immer
+  //    Null-Bytes oder Steuerzeichen.
+  const head = new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 256));
+  let nonPrintable = 0;
+  for (let i = 0; i < head.length; i++) {
+    const b = head[i];
+    if (b === 0 || (b > 0 && b < 9) || (b > 13 && b < 32) || b > 127) {
+      nonPrintable++;
+    }
+  }
+  return nonPrintable > 10;
 }
 
 function parseBinary(buffer) {

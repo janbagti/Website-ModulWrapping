@@ -247,6 +247,7 @@ body {
   font-size: 0.85rem;
   z-index: 50;
   max-width: 80vw;
+  cursor: pointer;
 }
 .toast.error { border-color: var(--c-warn); color: var(--c-warn); }
 .toast.success { border-color: var(--c-accent); color: var(--c-accent); }

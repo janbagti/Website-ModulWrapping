@@ -73,8 +73,13 @@ function toast(msg, kind = '') {
   els.toast.className = 'toast' + (kind ? ' ' + kind : '');
   els.toast.hidden = false;
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => { els.toast.hidden = true; }, 3500);
+  // Fehler bleiben stehen bis zum nächsten Toast — nicht automatisch ausblenden.
+  if (kind !== 'error') {
+    toast._t = setTimeout(() => { els.toast.hidden = true; }, 3500);
+  }
 }
+// Klick auf den Toast schließt ihn.
+els.toast.addEventListener('click', () => { els.toast.hidden = true; });
 
 function fmtInt(n) { return n.toLocaleString('de-DE'); }
 function fmtPct(x) { return (x * 100).toFixed(1) + ' %'; }
