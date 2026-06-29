@@ -112,8 +112,15 @@ function clearFlattenResults() {
 
 async function handleFile(file) {
   const name = file.name.toLowerCase();
+  toast(`Lese ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB) …`, '');
+  console.log('[load]', file.name, file.size, 'bytes');
+
+  // Mikropause damit der Toast vor dem CPU-Burn sichtbar wird.
+  await new Promise(r => setTimeout(r, 16));
+
   let geometry;
   try {
+    const t0 = performance.now();
     const buf = await file.arrayBuffer();
     if (name.endsWith('.obj')) {
       geometry = loadOBJ(new TextDecoder().decode(buf));
@@ -123,49 +130,78 @@ async function handleFile(file) {
       toast('Nur OBJ oder STL.', 'error');
       return;
     }
+    console.log('[load] parsed in', (performance.now() - t0).toFixed(0), 'ms');
   } catch (e) {
-    console.error(e);
+    console.error('[load] parse error:', e);
     toast('Datei konnte nicht gelesen werden: ' + e.message, 'error');
     return;
   }
 
   if (!geometry || geometry.attributes.position.count === 0) {
-    toast('Mesh ist leer.', 'error');
+    console.error('[load] empty geometry');
+    toast('Mesh ist leer — Datei enthielt keine gültigen Vertices.', 'error');
     return;
   }
 
-  geometry.computeVertexNormals();
-  const info = buildMeshInfo(geometry);
+  console.log('[load] vertices:', geometry.attributes.position.count, 'faces:', (geometry.index?.count ?? 0) / 3);
 
-  state.geometry = geometry;
-  state.meshInfo = info;
-  state.fileName = file.name;
+  try {
+    const t1 = performance.now();
+    geometry.computeVertexNormals();
+    console.log('[load] normals in', (performance.now() - t1).toFixed(0), 'ms');
 
-  viewer3d.setGeometry(geometry, info);
-  seamPicker.bind(viewer3d.mesh, geometry);
-  els.statSeams.textContent = '0';
-  els.btnSeamClear.disabled = true;
-  els.btnApplyCut.disabled = true;
+    const t2 = performance.now();
+    const info = buildMeshInfo(geometry);
+    console.log('[load] meshInfo in', (performance.now() - t2).toFixed(0), 'ms — boundary loops:', info.boundaryLoops.length);
 
-  refreshMeshStats();
-  clearFlattenResults();
+    state.geometry = geometry;
+    state.meshInfo = info;
+    state.fileName = file.name;
 
-  els.dropHint.classList.add('hidden');
-  els.btnFlatten.disabled = false;
-  els.btnResetView.disabled = false;
-  els.btnSeamMode.disabled = false;
+    const t3 = performance.now();
+    viewer3d.setGeometry(geometry, info);
+    console.log('[load] viewer3d.setGeometry in', (performance.now() - t3).toFixed(0), 'ms');
 
-  toast(`Geladen: ${fmtInt(info.vertexCount)} Vertices, ${fmtInt(info.faceCount)} Faces`, 'success');
+    seamPicker.bind(viewer3d.mesh, geometry);
+    els.statSeams.textContent = '0';
+    els.btnSeamClear.disabled = true;
+    els.btnApplyCut.disabled = true;
+
+    refreshMeshStats();
+    clearFlattenResults();
+
+    els.dropHint.classList.add('hidden');
+    els.btnFlatten.disabled = false;
+    els.btnResetView.disabled = false;
+    els.btnSeamMode.disabled = false;
+
+    toast(`Geladen: ${fmtInt(info.vertexCount)} Vertices, ${fmtInt(info.faceCount)} Faces`, 'success');
+  } catch (e) {
+    console.error('[load] post-parse error:', e);
+    toast('Mesh konnte nicht eingerichtet werden: ' + e.message, 'error');
+  }
 }
 
 async function handleFlatten() {
   if (!state.geometry) return;
+  const faceCount = state.meshInfo.faceCount;
+  if (faceCount > 100_000) {
+    const ok = confirm(
+      `Dieses Mesh hat ${fmtInt(faceCount)} Faces. LSCM in reinem JS skaliert linear ` +
+      `mit Faces × Iterationen — das kann hier 10–60 s dauern und etwa ` +
+      `${Math.round(faceCount * 0.2)} MB RAM brauchen.\n\nFortfahren?`
+    );
+    if (!ok) return;
+  }
   els.statFlattenStatus.textContent = 'läuft …';
   els.btnFlatten.disabled = true;
+  console.log('[flatten] starting, faces:', faceCount);
+  const t0 = performance.now();
   await new Promise(r => setTimeout(r, 16));
 
   try {
     const result = flattenAllComponents(state.geometry, { maxLayoutWidth: 1500, padding: 20 });
+    console.log('[flatten] done in', (performance.now() - t0).toFixed(0), 'ms');
     if (!result.ok) {
       els.statFlattenStatus.textContent = 'Fehler';
       toast('Abwicklung fehlgeschlagen: ' + result.error, 'error');

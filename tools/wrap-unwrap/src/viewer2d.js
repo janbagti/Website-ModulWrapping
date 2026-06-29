@@ -36,7 +36,7 @@ export class Viewer2D {
 
     this.mesh = null;
     this.wireMesh = null;
-    this.wireVisible = true;
+    this.wireVisible = false;
     this.heatmapOn = false;
     this.componentsOn = false;
 
@@ -91,6 +91,7 @@ export class Viewer2D {
       this.wireMesh.material.dispose();
       this.wireMesh = null;
     }
+    this._flatGeoForWire = null;
     this._labelData = null;
     this._renderLabels();
   }
@@ -270,13 +271,9 @@ export class Viewer2D {
     this.mesh = new THREE.Mesh(flatGeo, fillMat);
     this.scene.add(this.mesh);
 
-    // Wireframe als separate LineSegments.
-    const wireGeo = new THREE.WireframeGeometry(flatGeo);
-    const wireMat = new THREE.LineBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.55 });
-    this.wireMesh = new THREE.LineSegments(wireGeo, wireMat);
-    this.wireMesh.position.z = 0.001;
-    this.wireMesh.visible = this.wireVisible;
-    this.scene.add(this.wireMesh);
+    // Wireframe lazy — bei vielen Faces sonst zu langsam.
+    this._flatGeoForWire = flatGeo;
+    if (this.wireVisible) this._buildWireframe();
 
     // View framen.
     const cx = (minX + maxX) / 2;
@@ -318,7 +315,25 @@ export class Viewer2D {
 
   setWireframe(on) {
     this.wireVisible = on;
+    if (on && !this.wireMesh && this._flatGeoForWire) {
+      this._buildWireframe();
+    }
     if (this.wireMesh) this.wireMesh.visible = on;
+  }
+
+  _buildWireframe() {
+    if (!this._flatGeoForWire) return;
+    const faceCount = this._flatGeoForWire.index ? this._flatGeoForWire.index.count / 3 : 0;
+    if (faceCount > 200_000) {
+      console.warn(`[Viewer2D] ${faceCount} Faces — Wireframe ausgelassen`);
+      return;
+    }
+    const wireGeo = new THREE.WireframeGeometry(this._flatGeoForWire);
+    const wireMat = new THREE.LineBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.55 });
+    this.wireMesh = new THREE.LineSegments(wireGeo, wireMat);
+    this.wireMesh.position.z = 0.001;
+    this.wireMesh.visible = this.wireVisible;
+    this.scene.add(this.wireMesh);
   }
 
   setHeatmap(on) {

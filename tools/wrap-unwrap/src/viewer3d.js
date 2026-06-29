@@ -30,7 +30,7 @@ export class Viewer3D {
 
     this.mesh = null;
     this.wireMesh = null;
-    this.wireVisible = true;
+    this.wireVisible = false;
     this.heatmapOn = false;
     this.componentsOn = false;
     this.labelGroup = new THREE.Group();
@@ -54,7 +54,7 @@ export class Viewer3D {
 
   setGeometry(geometry, info) {
     if (this.mesh) { this.scene.remove(this.mesh); this.mesh.geometry.dispose(); this.mesh.material.dispose(); }
-    if (this.wireMesh) { this.scene.remove(this.wireMesh); this.wireMesh.geometry.dispose(); this.wireMesh.material.dispose(); }
+    this._disposeWireframe();
 
     const mat = new THREE.MeshStandardMaterial({
       color: 0xeeeeee,
@@ -67,11 +67,8 @@ export class Viewer3D {
     this.mesh = new THREE.Mesh(geometry, mat);
     this.scene.add(this.mesh);
 
-    const wireGeo = new THREE.WireframeGeometry(geometry);
-    const wireMat = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4 });
-    this.wireMesh = new THREE.LineSegments(wireGeo, wireMat);
-    this.scene.add(this.wireMesh);
-    this.wireMesh.visible = this.wireVisible;
+    // Wireframe wird nur erzeugt wenn sichtbar — bei dichten Meshes sonst Browser-Killer.
+    if (this.wireVisible) this._buildWireframe(geometry);
 
     // Frame the camera on the mesh.
     const bb = info.boundingBox;
@@ -182,7 +179,32 @@ export class Viewer3D {
 
   setWireframe(on) {
     this.wireVisible = on;
+    if (on && !this.wireMesh && this.mesh) {
+      this._buildWireframe(this.mesh.geometry);
+    }
     if (this.wireMesh) this.wireMesh.visible = on;
+  }
+
+  _buildWireframe(geometry) {
+    const faceCount = geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3;
+    if (faceCount > 200_000) {
+      console.warn(`[Viewer3D] ${faceCount} Faces — Wireframe wird ausgelassen (zu dicht für sinnvolle Darstellung)`);
+      return;
+    }
+    const wireGeo = new THREE.WireframeGeometry(geometry);
+    const wireMat = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4 });
+    this.wireMesh = new THREE.LineSegments(wireGeo, wireMat);
+    this.scene.add(this.wireMesh);
+    this.wireMesh.visible = this.wireVisible;
+  }
+
+  _disposeWireframe() {
+    if (this.wireMesh) {
+      this.scene.remove(this.wireMesh);
+      this.wireMesh.geometry.dispose();
+      this.wireMesh.material.dispose();
+      this.wireMesh = null;
+    }
   }
 
   setDistortion(distortion, on) {
