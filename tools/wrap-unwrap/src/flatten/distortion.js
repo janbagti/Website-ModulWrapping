@@ -44,7 +44,10 @@ export function computeDistortion(geometry, uv) {
   }
 
   // Globaler Skalierungsfaktor: 2D-Fläche soll im Schnitt der 3D-Fläche entsprechen.
-  const globalScale = totalArea3D > 0 ? totalArea2D / totalArea3D : 1;
+  // Schutz gegen totalArea==0 (degenerate Lösung) — Distortion wird dann 0
+  // gelassen damit nichts NaN wird.
+  const rawScale = totalArea3D > 0 ? totalArea2D / totalArea3D : 1;
+  const globalScale = rawScale > 1e-30 ? rawScale : 1;
 
   let sum = 0, count = 0, maxV = 0;
   for (let f = 0; f < faceCount; f++) {

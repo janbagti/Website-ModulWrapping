@@ -173,6 +173,11 @@ async function handleFile(file) {
     refreshMeshStats();
     clearFlattenResults();
 
+    // Toggle-State zurücksetzen damit Checkbox-UI nicht von viewer-State driftet.
+    els.toggleHeatmap.checked = false;
+    els.toggleWire.checked = false;
+    els.legend.hidden = true;
+
     els.dropHint.classList.add('hidden');
     els.btnFlatten.disabled = false;
     els.btnResetView.disabled = false;
@@ -321,31 +326,44 @@ function handleApplyCut() {
     return;
   }
 
-  const positions = state.geometry.attributes.position.array;
-  const index = state.geometry.index.array;
-  const cut = cutMeshAlongSeams(positions, index, seamPicker.seams);
-  const added = cut.positions.length / 3 - positions.length / 3;
+  try {
+    const positions = state.geometry.attributes.position.array;
+    const index = state.geometry.index.array;
+    const cut = cutMeshAlongSeams(positions, index, seamPicker.seams);
+    const added = cut.positions.length / 3 - positions.length / 3;
 
-  const newGeo = new THREE.BufferGeometry();
-  newGeo.setAttribute('position', new THREE.Float32BufferAttribute(cut.positions, 3));
-  newGeo.setIndex(new THREE.BufferAttribute(cut.index, 1));
-  newGeo.computeVertexNormals();
+    const newGeo = new THREE.BufferGeometry();
+    newGeo.setAttribute('position', new THREE.Float32BufferAttribute(cut.positions, 3));
+    newGeo.setIndex(new THREE.BufferAttribute(cut.index, 1));
+    newGeo.computeVertexNormals();
 
-  const info = buildMeshInfo(newGeo);
-  state.geometry = newGeo;
-  state.meshInfo = info;
+    const info = buildMeshInfo(newGeo);
+    state.geometry = newGeo;
+    state.meshInfo = info;
 
-  viewer3d.setGeometry(newGeo, info);
-  seamPicker.bind(viewer3d.mesh, newGeo);
-  els.statSeams.textContent = '0';
-  els.btnSeamClear.disabled = true;
-  els.btnApplyCut.disabled = true;
+    viewer3d.setGeometry(newGeo, info);
+    seamPicker.bind(viewer3d.mesh, newGeo);
+    els.statSeams.textContent = '0';
+    els.btnSeamClear.disabled = true;
+    els.btnApplyCut.disabled = true;
 
-  refreshMeshStats();
-  clearFlattenResults();
+    // Grafik-UVs sind nach dem Cut nicht mehr gültig — leise droppen damit
+    // die Textur nicht mit Default-(0,0)-UVs blöd auf das Mesh klebt.
+    if (graphic.image) {
+      els.statGraphic.textContent = `${graphic.image.naturalWidth}×${graphic.image.naturalHeight} (neu projizieren)`;
+      viewer3d.setTexture(null);
+      viewer2d.setTexture(null);
+    }
 
-  setSeamMode(false);
-  toast(`Geschnitten: ${fmtInt(added)} zusätzliche Vertices, ${fmtInt(info.boundaryLoops.length)} Boundary-Loop(s)`, 'success');
+    refreshMeshStats();
+    clearFlattenResults();
+
+    setSeamMode(false);
+    toast(`Geschnitten: ${fmtInt(added)} zusätzliche Vertices, ${fmtInt(info.boundaryLoops.length)} Boundary-Loop(s)`, 'success');
+  } catch (e) {
+    console.error('[apply-cut] error:', e);
+    toast('Schnitt fehlgeschlagen: ' + e.message, 'error');
+  }
 }
 
 function handleExport() {
@@ -415,6 +433,8 @@ function handleOverviewExport() {
 els.fileInput.addEventListener('change', e => {
   const f = e.target.files?.[0];
   if (f) handleFile(f);
+  // Wert zurücksetzen damit dieselbe Datei erneut geladen werden kann.
+  e.target.value = '';
 });
 
 ['dragover', 'dragenter'].forEach(ev => {
