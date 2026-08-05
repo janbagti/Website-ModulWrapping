@@ -72,9 +72,38 @@
         <button id="btn-decimate" class="btn" disabled>Dezimieren</button>
       </div>
 
-      <h2>Seam-Modus</h2>
+      <h2>Flächen erkennen</h2>
+      <p class="hint">
+        Erkennt Panels automatisch nach Knickwinkel. Klick auf eine Fläche
+        wählt sie aus (Shift-Klick = mehrere, Cmd/Ctrl-Klick = entfernen).
+        Dann „Seams aus Auswahl" um die Ränder als Schnittlinien zu setzen.
+      </p>
+      <div class="dec-row">
+        <label class="dec-label">Winkel °</label>
+        <input type="number" id="seg-angle" min="1" max="80" step="1" value="25" />
+      </div>
+      <div class="dec-row">
+        <label class="dec-label">Min Faces</label>
+        <input type="number" id="seg-minsize" min="1" step="10" value="50" />
+      </div>
+      <div class="dec-row">
+        <button id="btn-segment" class="btn" disabled>Flächen erkennen</button>
+      </div>
+      <dl class="stats">
+        <dt>Flächen erkannt</dt><dd id="stat-regions">—</dd>
+        <dt>Auswahl</dt><dd id="stat-selection">—</dd>
+      </dl>
+      <div class="dec-row">
+        <button id="btn-region-mode" class="btn" disabled>Auswahl-Modus</button>
+        <button id="btn-region-clear" class="btn" disabled>Auswahl leeren</button>
+      </div>
+      <div class="dec-row">
+        <button id="btn-seams-from-selection" class="btn" disabled>Seams aus Auswahl</button>
+      </div>
+
+      <h2>Seam-Modus (manuell)</h2>
       <p class="hint" id="seam-hint">
-        Auf eine Kante klicken um sie zur Naht zu machen.
+        Alternativ: auf eine Kante klicken um sie zur Naht zu machen.
         Mehrere Kanten zu einer Linie verbinden → erst dann entsteht
         beim Anwenden ein echter Schnitt.
       </p>

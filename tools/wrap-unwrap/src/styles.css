@@ -219,6 +219,13 @@ body {
   display: flex;
   gap: 0.4rem;
   align-items: center;
+  margin-bottom: 0.35rem;
+}
+.dec-row .btn { flex: 1; }
+.dec-label {
+  font-size: 0.78rem;
+  color: var(--c-muted);
+  min-width: 5.5rem;
 }
 .dec-row input[type="number"] {
   flex: 1;

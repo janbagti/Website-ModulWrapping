@@ -7,6 +7,8 @@ import { buildMeshInfo } from './mesh-info.js';
 import { flattenAllComponents } from './flatten/multi.js';
 import { cutMeshAlongSeams } from './flatten/cut.js';
 import { SeamPicker } from './seam-picker.js';
+import { RegionPicker } from './region-picker.js';
+import { segmentMesh, seamsFromSelection } from './flatten/segment.js';
 import { GraphicOverlay } from './graphic-overlay.js';
 import { decimateMesh } from './decimate.js';
 import { generateSVG, downloadSVG, downloadPNG } from './export-svg.js';
@@ -31,6 +33,14 @@ const els = {
   toggleRaster:   document.getElementById('toggle-raster'),
   decimateTarget: document.getElementById('decimate-target'),
   btnDecimate:    document.getElementById('btn-decimate'),
+  segAngle:       document.getElementById('seg-angle'),
+  segMinSize:     document.getElementById('seg-minsize'),
+  btnSegment:     document.getElementById('btn-segment'),
+  statRegions:    document.getElementById('stat-regions'),
+  statSelection:  document.getElementById('stat-selection'),
+  btnRegionMode:  document.getElementById('btn-region-mode'),
+  btnRegionClear: document.getElementById('btn-region-clear'),
+  btnSeamsFromSel: document.getElementById('btn-seams-from-selection'),
   toggleWire:     document.getElementById('toggle-wire'),
   toggleHeatmap:  document.getElementById('toggle-heatmap'),
   legend:         document.getElementById('legend'),
@@ -70,6 +80,21 @@ seamPicker.onSeamsChanged = (seams) => {
 };
 
 const graphic = new GraphicOverlay();
+
+const regionPicker = new RegionPicker({
+  canvas: els.canvas3d,
+  camera: viewer3d.camera,
+  controls: viewer3d.controls,
+});
+regionPicker.onSelectionChanged = (sel) => {
+  els.statSelection.textContent = sel.size === 0 ? '—' : `${sel.size} Fläche(n)`;
+  els.btnRegionClear.disabled = sel.size === 0;
+  els.btnSeamsFromSel.disabled = sel.size === 0;
+  viewer3d.setRegionSelection(sel);
+};
+
+// State pro Session: die aktuelle Segmentierung
+state.segmentation = null; // { regionOf, regionCount, creaseEdges }
 
 function toast(msg, kind = '') {
   els.toast.textContent = msg;
@@ -178,11 +203,14 @@ async function handleFile(file) {
     els.toggleWire.checked = false;
     els.legend.hidden = true;
 
+    clearSegmentation();
+
     els.dropHint.classList.add('hidden');
     els.btnFlatten.disabled = false;
     els.btnResetView.disabled = false;
     els.btnSeamMode.disabled = false;
     els.btnDecimate.disabled = false;
+    els.btnSegment.disabled = false;
 
     // Vorschlag: 10 % der aktuellen Faces, aber zwischen 5 k und 50 k.
     const suggest = Math.max(5000, Math.min(50000, Math.round(info.faceCount * 0.1 / 1000) * 1000));
@@ -248,8 +276,110 @@ async function handleFlatten() {
   }
 }
 
+function clearSegmentation() {
+  state.segmentation = null;
+  viewer3d.clearRegions();
+  regionPicker.bind(null, null, null, 0);
+  els.statRegions.textContent = '—';
+  els.statSelection.textContent = '—';
+  els.btnRegionMode.disabled = true;
+  els.btnRegionClear.disabled = true;
+  els.btnSeamsFromSel.disabled = true;
+  setRegionMode(false);
+}
+
+async function handleSegment() {
+  if (!state.geometry) return;
+  const angle = parseFloat(els.segAngle.value);
+  const minSize = parseInt(els.segMinSize.value, 10);
+  if (!Number.isFinite(angle) || angle < 1 || angle > 89) {
+    toast('Winkel muss zwischen 1 und 89 Grad liegen.', 'error');
+    return;
+  }
+  if (!Number.isFinite(minSize) || minSize < 1) {
+    toast('Min-Faces muss ≥ 1 sein.', 'error');
+    return;
+  }
+
+  toast('Erkenne Flächen …', '');
+  els.btnSegment.disabled = true;
+  await new Promise(r => setTimeout(r, 16));
+
+  try {
+    const t0 = performance.now();
+    const positions = state.geometry.attributes.position.array;
+    const index = state.geometry.index.array;
+    const seg = segmentMesh(positions, index, {
+      angleThresholdDeg: angle,
+      minRegionFaces: minSize,
+    });
+    const ms = performance.now() - t0;
+    console.log('[segment]', ms.toFixed(0), 'ms', seg.regionCount, 'Regionen');
+
+    state.segmentation = seg;
+    viewer3d.setRegions(seg.regionOf, seg.regionCount);
+    regionPicker.bind(viewer3d.mesh, state.geometry, seg.regionOf, seg.regionCount);
+    els.statRegions.textContent = fmtInt(seg.regionCount);
+    els.statSelection.textContent = '—';
+    els.btnRegionMode.disabled = false;
+    els.btnRegionClear.disabled = true;
+    els.btnSeamsFromSel.disabled = true;
+
+    if (seg.regionCount === 1) {
+      toast(
+        `Nur 1 Fläche erkannt bei ${angle}° — Mesh ist zu glatt/rund. ` +
+        `Winkel niedriger setzen oder Seams manuell malen.`,
+        'error',
+      );
+    } else {
+      toast(`${seg.regionCount} Flächen erkannt in ${ms.toFixed(0)} ms. Auswahl-Modus aktivieren und Flächen anklicken.`, 'success');
+    }
+  } catch (e) {
+    console.error('[segment] error:', e);
+    toast('Segmentierung fehlgeschlagen: ' + e.message, 'error');
+  } finally {
+    els.btnSegment.disabled = false;
+  }
+}
+
+function setRegionMode(on) {
+  if (on) {
+    // Erst Seam-Modus aus falls aktiv — die beiden schließen sich aus.
+    if (seamPicker.active) setSeamMode(false);
+    regionPicker.enable();
+    els.btnRegionMode.classList.add('active');
+    els.btnRegionMode.textContent = 'Auswahl-Modus aus';
+  } else {
+    regionPicker.disable();
+    els.btnRegionMode.classList.remove('active');
+    els.btnRegionMode.textContent = 'Auswahl-Modus';
+  }
+}
+
+function handleSeamsFromSelection() {
+  if (!state.segmentation || regionPicker.selected.size === 0) {
+    toast('Erst Flächen auswählen.', 'error');
+    return;
+  }
+  const positions = state.geometry.attributes.position.array;
+  const index = state.geometry.index.array;
+  const seams = seamsFromSelection(
+    index,
+    positions,
+    state.segmentation.regionOf,
+    regionPicker.selected,
+  );
+  seamPicker.setSeams(seams);
+  els.statSeams.textContent = String(seams.size);
+  els.btnSeamClear.disabled = seams.size === 0;
+  els.btnApplyCut.disabled = seams.size === 0;
+  toast(`${seams.size} Seams aus Auswahl gesetzt. Jetzt „Schnitte anwenden".`, 'success');
+}
+
 function setSeamMode(on) {
   if (on) {
+    // Region-Modus aus falls aktiv — beide schließen sich aus.
+    if (regionPicker.active) setRegionMode(false);
     seamPicker.enable();
     els.btnSeamMode.classList.add('active');
     els.btnSeamMode.textContent = 'Seam-Modus aus';
@@ -291,6 +421,7 @@ async function handleDecimate() {
 
     viewer3d.setGeometry(newGeo, info);
     seamPicker.bind(viewer3d.mesh, newGeo);
+    clearSegmentation();
     // Bestehende Seams sind topologisch nicht mehr gültig nach Dezimierung.
     els.statSeams.textContent = '0';
     els.btnSeamClear.disabled = true;
@@ -343,6 +474,7 @@ function handleApplyCut() {
 
     viewer3d.setGeometry(newGeo, info);
     seamPicker.bind(viewer3d.mesh, newGeo);
+    clearSegmentation();
     els.statSeams.textContent = '0';
     els.btnSeamClear.disabled = true;
     els.btnApplyCut.disabled = true;
@@ -463,6 +595,10 @@ els.btnSeamMode.addEventListener('click', () => setSeamMode(!seamPicker.active))
 els.btnSeamClear.addEventListener('click', () => seamPicker.clearSeams());
 els.btnApplyCut.addEventListener('click', handleApplyCut);
 els.btnDecimate.addEventListener('click', handleDecimate);
+els.btnSegment.addEventListener('click', handleSegment);
+els.btnRegionMode.addEventListener('click', () => setRegionMode(!regionPicker.active));
+els.btnRegionClear.addEventListener('click', () => regionPicker.clearSelection());
+els.btnSeamsFromSel.addEventListener('click', handleSeamsFromSelection);
 els.btnExport.addEventListener('click', handleExport);
 els.btnOverview.addEventListener('click', handleOverviewExport);
 

@@ -19,27 +19,48 @@ Dev-Server läuft auf <http://localhost:5173>.
 - **three.js** — 3D-Viewer und 2D-Ortho-Viewer
 - **LSCM in Vanilla-JS** — Lévy et al. 2002, gelöst mit Preconditioned
   Conjugate Gradient direkt im Browser (kein WASM nötig)
+- **meshoptimizer (WASM)** — QEC-Dezimierung
 - **Vite** — Dev-Server und Build
 
 ## Workflow
 
 1. **OBJ/STL laden** (Drag-and-Drop oder Button)
 2. **Dezimieren** (optional, aber bei > 100 k Faces dringend empfohlen)
-   → Ziel-Faces in der Seitenleiste eingeben, Button drücken.
-   meshoptimizer macht QEC mit Topologie-Erhaltung in ~1 s pro 100 k Faces.
-3. **Seams malen** → auf Kanten klicken um eine durchgehende Schnitt-Linie zu zeichnen
-4. **Schnitte anwenden** → Mesh wird entlang der Seams getrennt, Bahnen entstehen
-4. **Grafik laden** (optional) → Bild auf den Scan projizieren aus aktueller Ansicht
-6. **Abwickeln (LSCM)** → pro zusammenhängender Komponente eine eigene Bahn,
+3. **Flächen erkennen** (empfohlen für scharfkantige Objekte)
+   - Winkelschwellwert einstellen (default 25° passt für Fahrzeug/Möbel)
+   - Button „Flächen erkennen" → Mesh wird nach Panels eingefärbt
+   - „Auswahl-Modus" aktivieren, dann Panels anklicken:
+     - **Klick**: einzelne Fläche auswählen
+     - **Shift-Klick**: zur Auswahl hinzufügen
+     - **Cmd/Ctrl-Klick**: aus Auswahl entfernen
+   - „Seams aus Auswahl" → Ränder der Auswahl werden zu Schnittlinien
+4. **Alternativ Seams manuell malen** (für runde Objekte ohne klare Panels)
+5. **Schnitte anwenden** → Mesh wird entlang der Seams getrennt
+6. **Grafik laden** (optional) → Bild aus aktueller Kamera-Sicht projizieren
+7. **Abwickeln (LSCM)** → pro zusammenhängender Komponente eine eigene Bahn,
    nebeneinander angeordnet (Shelf-Packing, max. Breite 1500 mm)
-7. **Verzerrungs-Heatmap** zeigt wo die Folie arbeiten muss
+8. **Verzerrungs-Heatmap** zeigt wo die Folie arbeiten muss
    - Grün: ≤ 5 % Flächenfehler — Folie verarbeitet das problemlos
    - Gelb: 5–15 % — typisches Wrap-Material schafft das mit Wärme
    - Rot: ≥ 20 % — Bahn muss geteilt werden
-8. **Grafik laden** (optional) → Bild aus aktueller Kamera-Sicht projizieren
 9. **SVG-Export** → Bahnen-Datei mit Schnittlinien, Nummern und Grafik als Raster
 10. **Übersicht (PNG)** → 3D-Ansicht mit farbigen Komponenten + Nummern, damit
     beim Aufkleben klar ist welche Bahn wohin gehört
+
+## Flächenerkennung — universell für alle Fälle
+
+Der Algorithmus (Dihedral-Angle-Watershed) prüft für jede Kante den Knickwinkel
+zwischen den beiden angrenzenden Faces. Alles über dem Schwellwert wird als
+Panel-Grenze markiert, Flood-Fill trennt die Regionen.
+
+- **Scharfkantige Objekte** (Fahrzeug, Möbel, Verpackung, Elektronik-Gehäuse):
+  Schwellwert 20–35°, alle Panels sauber getrennt. Türen, Motorhaube, Kotflügel
+  erkennt der Algorithmus zuverlässig einzeln.
+- **Weich gerundete Objekte** (Helm, organische Formen): Schwellwert niedriger
+  (5–15°), fängt leichte Krümmungswechsel ab. Bei komplett glatten Objekten
+  (Kugel) findet er nur 1 Region — dann Seams manuell malen.
+- **Min-Faces** filtert winzige Fragmente raus (default 50) — die werden in
+  ihre größten Nachbarn absorbiert.
 
 ## Mathematische Grenze
 
@@ -50,7 +71,7 @@ können, dass die physische Folie die Restverzerrung wegarbeitet.
 
 ## Geplant
 
-- Automatische Patch-Segmentierung (Cluster nach Krümmung)
 - PDF-Export mit Seitenumbruch bei großen Layouts
 - ARAP-Verfeinerung für gemischte Anforderung an Winkel- und Flächentreue
 - Grafik-Overlay mit präziser Position-/Rotation-/Skalierung-Steuerung über UI
+- Region-Merge-Button (falls Auto-Erkennung zwei Panels als eins liest)

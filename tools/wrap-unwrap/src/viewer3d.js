@@ -5,6 +5,7 @@ import {
   buildVertexColorsFromComponents,
   makeNumberSprite,
   compute3DCentroid,
+  componentColor,
 } from './components-vis.js';
 
 export class Viewer3D {
@@ -92,9 +93,44 @@ export class Viewer3D {
     this.heatmapOn = false;
     this._componentColors = null;
     this._distortionColors = null;
+    this._regionColors = null;
+    this._regionOf = null;
+    this._regionCount = 0;
+    this._selectedRegions = null;
     // Texture wieder anhängen falls vorhanden (geometry hat noch keine UVs,
     // aber der Material-Slot wird trotzdem wiederhergestellt).
     if (this.mesh) this.mesh.material.map = this._texture || null;
+    this._applyColors();
+  }
+
+  // Färbt das Mesh nach Regions-Zuordnung. Wird durch setRegionSelection
+  // ergänzt, das die nicht-selektierten dimmt.
+  setRegions(regionOf, regionCount) {
+    this._regionOf = regionOf;
+    this._regionCount = regionCount;
+    this._selectedRegions = null; // reset selection
+    this._regionColors = buildRegionColors(this.mesh.geometry, regionOf, regionCount, null);
+    this._applyColors();
+  }
+
+  setRegionSelection(selectedSet) {
+    this._selectedRegions = selectedSet && selectedSet.size > 0 ? selectedSet : null;
+    if (this._regionOf) {
+      this._regionColors = buildRegionColors(
+        this.mesh.geometry,
+        this._regionOf,
+        this._regionCount,
+        this._selectedRegions,
+      );
+      this._applyColors();
+    }
+  }
+
+  clearRegions() {
+    this._regionOf = null;
+    this._regionCount = 0;
+    this._regionColors = null;
+    this._selectedRegions = null;
     this._applyColors();
   }
 
@@ -141,8 +177,10 @@ export class Viewer3D {
   _applyColors() {
     if (!this.mesh) return;
     const g = this.mesh.geometry;
+    // Prioritäten: heatmap > regions > components > plain (texture unterdrückt regions/components)
     let src = null;
     if (this.heatmapOn && this._distortionColors) src = this._distortionColors;
+    else if (!this._texture && this._regionColors) src = this._regionColors;
     else if (!this._texture && this.componentsOn && this._componentColors) src = this._componentColors;
     if (src) {
       g.setAttribute('color', new THREE.BufferAttribute(src, 3));
@@ -230,6 +268,44 @@ export class Viewer3D {
     this.renderer.render(this.scene, this.camera);
     requestAnimationFrame(this._raf);
   }
+}
+
+// Färbt per-vertex nach Region. Wenn selectedSet gegeben, werden
+// nicht-selektierte Regionen dimm-grau, selektierte behalten volle Farbe.
+function buildRegionColors(geometry, regionOf, regionCount, selectedSet) {
+  const index = geometry.index.array;
+  const vertCount = geometry.attributes.position.count;
+  const faceCount = regionOf.length;
+
+  // Vorberechnete Region-Farben.
+  const palette = new Array(regionCount);
+  const tmpC = new THREE.Color();
+  for (let i = 0; i < regionCount; i++) {
+    componentColor(i, tmpC);
+    palette[i] = [tmpC.r, tmpC.g, tmpC.b];
+  }
+
+  const out = new Float32Array(vertCount * 3);
+  // Wenn nichts selektiert ist: alle Regionen mit voller Farbe (0.65 mit weißanteil, wie Komponenten).
+  // Mit Selektion: selektierte hell, nicht-selektierte grau (0.25).
+  const activeAlpha = 0.75;
+  const inactiveAlpha = 0.15;
+  for (let f = 0; f < faceCount; f++) {
+    const r = regionOf[f];
+    const active = selectedSet ? selectedSet.has(r) : true;
+    const alpha = active ? activeAlpha : inactiveAlpha;
+    const [pr, pg, pb] = palette[r] || [0.5, 0.5, 0.5];
+    const cr = pr * alpha + (1 - alpha);
+    const cg = pg * alpha + (1 - alpha);
+    const cb = pb * alpha + (1 - alpha);
+    for (let k = 0; k < 3; k++) {
+      const v = index[f * 3 + k];
+      out[v * 3]     = cr;
+      out[v * 3 + 1] = cg;
+      out[v * 3 + 2] = cb;
+    }
+  }
+  return out;
 }
 
 function vertexColorsFromDistortion(geometry, distortion) {
